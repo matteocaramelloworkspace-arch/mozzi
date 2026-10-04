@@ -106,6 +106,12 @@ input[type=color]::-webkit-color-swatch{border:0;border-radius:50%}
 .mb button:disabled{opacity:.25}
 .mb span{font-weight:400}
 .gt{font-size:.9375rem;font-weight:400;color:var(--mut);margin:28px 0 6px;letter-spacing:0;border:0;padding:0}
+/* ogni sezione ha il suo colore: verde acqua per il patrimonio, ambra per le spese, verde per le entrate, azzurro per il risparmio, rosa per gli obiettivi, oro per la hall of fame */
+body[data-sec="spese"]{--acc:#f5a524;--accink:#1a1200}body[data-sec="entrate"]{--acc:#3ddc8a;--accink:#06201e}body[data-sec="risparmio"]{--acc:#5b8def;--accink:#fff}
+body[data-sec="obiettivi"]{--acc:#ec6aa6;--accink:#fff}body[data-sec="hof"]{--acc:#e0b45a;--accink:#1a1200}body[data-sec="sistema"]{--acc:#9bb0ab;--accink:#0a0d0c}
+.mi[data-a="home"],.mi[data-a="sub"],.mi[data-a="esub"],.mi[data-a="isub"],.mi[data-a="sav"],.mi[data-a="hist"],.mi[data-a="goals"],.mi[data-a="hof"]{position:relative;padding-left:26px}
+.mi[data-a="home"]::before,.mi[data-a="sub"]::before,.mi[data-a="esub"]::before,.mi[data-a="isub"]::before,.mi[data-a="sav"]::before,.mi[data-a="hist"]::before,.mi[data-a="goals"]::before,.mi[data-a="hof"]::before{content:"";position:absolute;left:8px;top:50%;width:8px;height:8px;margin-top:-4px;border-radius:50%;background:#4fc3b8}
+.mi[data-a="esub"]::before{background:#f5a524}.mi[data-a="isub"]::before{background:#3ddc8a}.mi[data-a="sav"]::before{background:#5b8def}.mi[data-a="goals"]::before{background:#ec6aa6}.mi[data-a="hof"]::before{background:#e0b45a}
 h1+p.mini,.gt+p.mini{display:none}   /* le spiegazioni lunghe vivono nella lampadina */
 .pxs{text-align:center;margin:10px 0}
 
@@ -295,6 +301,7 @@ main>section:not([hidden]){animation:in var(--t-base) var(--ease)}
       <button class="ghost" data-a="oauth" data-p="google" style="width:100%">Continua con Google</button>
       <button class="ghost" data-a="oauth" data-p="apple" id="appleBtn" style="width:100%;margin-top:8px" hidden>Continua con Apple</button></div>
     <p class="mini" style="text-align:center;margin-top:16px">Registrandoti accetti i <button class="lnk" data-a="legal">termini e l'informativa privacy</button>.</p>
+    <p class="mini" id="demolink" style="text-align:center;margin-top:10px">Vuoi solo guardare? <button class="lnk" data-a="demo">Prova l'app senza account</button></p>
   </section>
 
   <section id="pick" class="pick" hidden>
@@ -339,13 +346,15 @@ main>section:not([hidden]){animation:in var(--t-base) var(--ease)}
 const SUPABASE_URL = "https://ugzvuieshiqwdlclryhr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_egcYudWrd7H-UFyMqz3E6A_tJC4k7EN";   // chiave pubblicabile (sb_publishable_…)
 // 2) Feedback: l'indirizzo a cui arrivano i messaggi dal menu (è visibile a chi usa l'app). 3) Accessi social: attivali dopo averli configurati su Supabase.
-const APP_VERSION = "v35";
+const APP_VERSION = "v1.01";
 const FEEDBACK_EMAIL = "Matteocaramello.workspace@gmail.com";
-const OAUTH = { google: false, apple: false };   // google: true solo dopo averlo configurato su Supabase
+const OAUTH = { google: true, apple: false };    // google attivo: configurato su Google Cloud e Supabase
+const PRICE_FN = SUPABASE_URL + "/functions/v1/prezzi";   // funzione Supabase che prende prezzi e ricerca titoli da Yahoo Finance
 const DEMO_DATA = false;   // true = la modalità demo si riempie di dati inventati per provare; false = account vuoto
 
 const $ = id => document.getElementById(id);
-const ok = SUPABASE_URL.startsWith("https://"), D = !ok;   // D = modalità demo (dati solo sul dispositivo)
+const FORCE_DEMO = (()=>{try{return localStorage.getItem("forcedemo")==="1";}catch{return false;}})();   // "Prova senza account": dati solo sul dispositivo
+const ok = SUPABASE_URL.startsWith("https://"), D = !ok || FORCE_DEMO;   // D = modalità demo (dati solo sul dispositivo)
 const LS={get:(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch{return d}},set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
 const KEEP="keep";
 const store={ // "Resta connesso": sessione persistente oppure solo finché il browser resta aperto
@@ -360,7 +369,7 @@ const MESI=["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Ag
 const CATS=[["azioni","Azioni e ETF"],["obbl","Obbligazioni"],["altro","Altri investimenti"],["liq","Liquidità"],["beni","Beni di valore"]];
 let LANG=LS.get("lang","it");
 if(LANG==="en")MESI.splice(0,12,...["January","February","March","April","May","June","July","August","September","October","November","December"]);
-const ENR=[["Spese e patrimonio, anche offline.", "Expenses and net worth, even offline."], ["Accedi", "Log in"], ["Registrati", "Sign up"], ["Crea account", "Create account"], ["Resta connesso", "Stay signed in"], ["Un attimo…", "One moment…"], ["Scegli l'anno", "Choose the year"], ["+ Aggiungi anno", "+ Add year"], ["Nuovo anno", "New year"], ["Aggiungi voce", "Add item"], ["Aggiungi", "Add"], ["Esci", "Log out"], ["Cambia anno", "Change year"], ["Anno", "Year"], ["Patrimonio netto", "Net worth"], ["Azioni e ETF", "Stocks and ETFs"], ["Obbligazioni", "Bonds"], ["Altri investimenti", "Other investments"], ["Liquidità", "Cash"], ["Beni di valore", "Valuables"], ["Asset finanziari e ribilancia", "Financial assets and rebalance"], ["Asset finanziari", "Financial assets"], ["Aggiorna prezzi", "Update prices"], ["Aggiorna mese", "Update month"], ["Salva tutto", "Save all"], ["Salva", "Save"], ["Annulla", "Cancel"], ["Conferma", "Confirm"], ["Impostazioni", "Settings"], ["rispetto a", "vs"], ["da inizio anno", "year to date"], ["mese", "month"], ["anno", "year"], ["Cambio EUR/USD", "EUR/USD rate"], ["Nessuna voce: aggiungi la prima.", "No items yet: add the first one."], ["Nome", "Name"], ["Valuta", "Currency"], ["Elimina voce", "Delete item"], ["Tocca ancora per eliminare", "Tap again to delete"], ["Titolo", "Security"], ["Numero di quote", "Number of units"], ["quote", "units"], ["Prezzo di una quota", "Price per unit"], ["Altro (valore totale a mano)", "Other (enter total value)"], ["Personalizzato (prezzo a mano)", "Custom (manual price)"], ["Ribilancia", "Rebalance"], ["Tasse sui profitti", "Tax on profits"], ["Continua senza tasse", "Continue without tax"], ["Continua", "Continue"], ["Modifica tasse", "Edit tax"], ["Aliquota sui profitti (%)", "Tax rate on profits (%)"], ["In percentuale", "By percentage"], ["In importo", "By amount"], ["Solo acquisti", "Buy only"], ["Nessuna modifica", "No change"], ["Entro la tolleranza", "Within tolerance"], ["Senza tasse.", "No tax."], ["Vendi", "Sell"], ["Compra", "Buy"], ["tasse stimate", "estimated tax"], ["Tasse stimate", "Estimated tax"], ["Lingua", "Language"], ["Dati", "Data"], ["Prezzi", "Prices"], ["Esporta dati", "Export data"], ["Importa dati", "Import data"], ["Prezzi di esempio, non ancora live", "Sample prices, not live yet"], ["Prezzi aggiornati il", "Prices updated on"], ["Modalità demo: dati solo su questo dispositivo", "Demo mode: data only on this device"], ["Offline: uso i dati salvati", "Offline: using saved data"], ["modifiche da sincronizzare", "changes to sync"], ["Quanto vuoi investire", "How much you want to invest"], ["Ignora scostamenti sotto il (%)", "Ignore deviations below (%)"], ["obiettivo", "target"], ["Nessun mese precedente con dati per il confronto", "No previous month with data to compare"], ["del portafoglio", "of the portfolio"], ["voci aggiornate", "items updated"], ["Mesi coperti", "Months covered"], ["Storico", "History"], ["Spese", "Expenses"], ["Inserisci spesa", "Add expense"], ["Andamento spese", "Spending trend"], ["Grafico spese", "Expense chart"], ["Grafico entrate", "Income chart"], ["Guida", "Guide"], ["Continua con Google", "Continue with Google"], ["Continua con Apple", "Continue with Apple"], ["oppure", "or"], ["Registrandoti accetti i", "By signing up you accept the"], ["termini e l'informativa privacy", "terms and privacy notice"], ["Account", "Account"], ["Note legali", "Legal"], ["Simulatore PIC e PAC", "Lump sum vs DCA simulator"], ["Entro la tolleranza", "Within tolerance"], ["Nessuna modifica", "No change"], ["% del portafoglio", "% of portfolio"], ["Inserisci entrata", "Add income"], ["Entrate", "Income"], ["Risparmio", "Savings"], ["Obiettivi", "Goals"], ["Validazione", "Validation"], ["Parole e categorie", "Words and categories"], ["Configurazione guidata", "Guided setup"]].sort((a,b)=>b[0].length-a[0].length).map(([k,v])=>[new RegExp("(?<![\\p{L}])"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}])","gu"),v]);
+const ENR=[["Spese e patrimonio, anche offline.", "Expenses and net worth, even offline."], ["Accedi", "Log in"], ["Registrati", "Sign up"], ["Crea account", "Create account"], ["Resta connesso", "Stay signed in"], ["Un attimo…", "One moment…"], ["Scegli l'anno", "Choose the year"], ["+ Aggiungi anno", "+ Add year"], ["Nuovo anno", "New year"], ["Aggiungi voce", "Add item"], ["Aggiungi", "Add"], ["Esci", "Log out"], ["Cambia anno", "Change year"], ["Anno", "Year"], ["Patrimonio netto", "Net worth"], ["Azioni e ETF", "Stocks and ETFs"], ["Obbligazioni", "Bonds"], ["Altri investimenti", "Other investments"], ["Liquidità", "Cash"], ["Beni di valore", "Valuables"], ["Asset finanziari e ribilancia", "Financial assets and rebalance"], ["Asset finanziari", "Financial assets"], ["Aggiorna prezzi", "Update prices"], ["Aggiorna mese", "Update month"], ["Salva tutto", "Save all"], ["Salva", "Save"], ["Annulla", "Cancel"], ["Conferma", "Confirm"], ["Impostazioni", "Settings"], ["rispetto a", "vs"], ["da inizio anno", "year to date"], ["mese", "month"], ["anno", "year"], ["Cambio EUR/USD", "EUR/USD rate"], ["Nessuna voce: aggiungi la prima.", "No items yet: add the first one."], ["Nome", "Name"], ["Valuta", "Currency"], ["Elimina voce", "Delete item"], ["Tocca ancora per eliminare", "Tap again to delete"], ["Titolo", "Security"], ["Numero di quote", "Number of units"], ["quote", "units"], ["Prezzo di una quota", "Price per unit"], ["Altro (valore totale a mano)", "Other (enter total value)"], ["Personalizzato (prezzo a mano)", "Custom (manual price)"], ["Ribilancia", "Rebalance"], ["Tasse sui profitti", "Tax on profits"], ["Continua senza tasse", "Continue without tax"], ["Continua", "Continue"], ["Modifica tasse", "Edit tax"], ["Aliquota sui profitti (%)", "Tax rate on profits (%)"], ["In percentuale", "By percentage"], ["In importo", "By amount"], ["Solo acquisti", "Buy only"], ["Nessuna modifica", "No change"], ["Entro la tolleranza", "Within tolerance"], ["Senza tasse.", "No tax."], ["Vendi", "Sell"], ["Compra", "Buy"], ["tasse stimate", "estimated tax"], ["Tasse stimate", "Estimated tax"], ["Lingua", "Language"], ["Dati", "Data"], ["Prezzi", "Prices"], ["Esporta dati", "Export data"], ["Importa dati", "Import data"], ["Prezzi di esempio, non ancora live", "Sample prices, not live yet"], ["Prezzi aggiornati il", "Prices updated on"], ["Modalità demo: dati solo su questo dispositivo", "Demo mode: data only on this device"], ["Offline: uso i dati salvati", "Offline: using saved data"], ["modifiche da sincronizzare", "changes to sync"], ["Quanto vuoi investire", "How much you want to invest"], ["Ignora scostamenti sotto il (%)", "Ignore deviations below (%)"], ["obiettivo", "target"], ["Nessun mese precedente con dati per il confronto", "No previous month with data to compare"], ["del portafoglio", "of the portfolio"], ["voci aggiornate", "items updated"], ["Mesi coperti", "Months covered"], ["Storico", "History"], ["Spese", "Expenses"], ["Inserisci spesa", "Add expense"], ["Andamento spese", "Spending trend"], ["Grafico spese", "Expense chart"], ["Grafico entrate", "Income chart"], ["Guida", "Guide"], ["Continua con Google", "Continue with Google"], ["Continua con Apple", "Continue with Apple"], ["oppure", "or"], ["Registrandoti accetti i", "By signing up you accept the"], ["termini e l'informativa privacy", "terms and privacy notice"], ["Account", "Account"], ["Note legali", "Legal"], ["Vuoi solo guardare?", "Just looking?"], ["Prova l'app senza account", "Try the app without an account"], ["Simulatore PIC e PAC", "Lump sum vs DCA simulator"], ["Entro la tolleranza", "Within tolerance"], ["Nessuna modifica", "No change"], ["% del portafoglio", "% of portfolio"], ["Inserisci entrata", "Add income"], ["Entrate", "Income"], ["Risparmio", "Savings"], ["Obiettivi", "Goals"], ["Validazione", "Validation"], ["Parole e categorie", "Words and categories"], ["Configurazione guidata", "Guided setup"]].sort((a,b)=>b[0].length-a[0].length).map(([k,v])=>[new RegExp("(?<![\\p{L}])"+k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}])","gu"),v]);
 const trt=t=>{let r=t;for(const [re,v] of ENR)r=r.replace(re,v);return r;};
 function tr8(r){if(LANG!=="en"||!r)return;
   if(r.nodeType===3){const v=trt(r.nodeValue);if(v!==r.nodeValue)r.nodeValue=v;return;}
@@ -384,7 +393,7 @@ const CATALOG=[ // p = prezzo di esempio finché non attivi i prezzi live; ex = 
 const TKCAT=["azioni","obbl","altro"],userTk=()=>{try{return CFG.tickers||[];}catch{return [];}},cat_=t=>CATALOG.find(c=>c.t===t)||userTk().find(c=>c.t===t)||{t,n:t,cat:"azioni",cur:"EUR",ex:"",p:0};
 const PX=LS.get("px",{}),pr=t=>PX[t]?PX[t].p:cat_(t).p;
 const NY=new Date().getFullYear(),NM=new Date().getMonth()+1,isNow=m=>S.y===NY&&m===NM;
-const pxLabel=()=>{const t=LS.get("pxt",0);return t?"Prezzi aggiornati il "+new Date(t).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Prezzi di esempio, non ancora live";};
+const pxLabel=()=>{const t=LS.get("pxt",0);return t?"Prezzi aggiornati il "+new Date(t).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"Prezzi non ancora aggiornati";};
 const setPx=t=>{document.querySelectorAll(".pxs").forEach(e=>{e.textContent=t||pxLabel();});};
 function snap(){if(S.y!==NY)return false;let ch=false;const F=S.data.fx=S.data.fx||{};
   if(D&&!Object.keys(F).length){[1.17,1.19,1.18,1.15,1.16,1.16,1.14,1.153,1.161].forEach((x,i)=>{if(i+1<NM)F[i+1]=x;});ch=true;}
@@ -401,18 +410,23 @@ function seed(){
     mk("beni","Oro 18k (gioielli)","EUR",6900),mk("beni","Vinili","EUR",3928),mk("beni","Disco Artie","EUR",1000)];
   snap();save();
 }
+// simbolo nel formato Yahoo: i titoli del catalogo hanno codice + borsa, quelli cercati hanno già il suffisso (es. VWCE.DE)
+const ySym=t=>{if(/[.=^]/.test(t))return t;const ex=((cat_(t).ex)||"").toUpperCase(),suf={XETR:".DE",XFRA:".F",XMIL:".MI",MIL:".MI",XLON:".L",LSE:".L",XAMS:".AS",XPAR:".PA",XSWX:".SW",XMAD:".MC",XBRU:".BR"}[ex]||"";return t+suf;};
+async function fnHeaders(){try{if(db){const {data}=await db.auth.getSession();if(data&&data.session)S.token=data.session.access_token||S.token;}}catch{}return {apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+(S.token||SUPABASE_ANON_KEY)};}
+async function fxUpdate(){                                        // cambio EUR/USD della Banca Centrale Europea (gratuito, senza chiave)
+  try{const r=await fetch("https://api.frankfurter.app/latest?from=EUR&to=USD"),j=await r.json(),f=Number(j.rates&&j.rates.USD);if(f>0){RATE.USD=RATE.EUR/f;LS.set("fx",{usd:RATE.USD});return true;}}catch{}
+  return false;
+}
 async function refresh(silent){
-  let key=LS.get("tdkey","");
-  if(!key){if(silent)return;ask("Chiave gratuita di Twelve Data (la crei su twelvedata.com)","incolla qui la chiave",k=>{LS.set("tdkey",k);refresh(false);});return;}
-  if(!navigator.onLine){if(!silent)setPx("Sei offline: uso gli ultimi prezzi.");return;}
-  setPx("Aggiorno…");
-  const get=async q=>{try{const r=await fetch("https://api.twelvedata.com/price?"+q+"&apikey="+key);const j=await r.json();const x=Number(j.price);return x>0?x:null;}catch{return null;}};
-  let bad=0;
-  for(const t of new Set(S.data.items.filter(i=>i.tk).map(i=>i.tk))){const k=cat_(t),x=await get("symbol="+t+(k.ex?"&exchange="+k.ex:""));if(x)PX[t]={p:x};else bad++;}
-  const f=await get("symbol=EUR/USD");if(f){RATE.USD=RATE.EUR/f;LS.set("fx",{usd:RATE.USD});}else bad++;
-  LS.set("px",PX);if(bad<1||Object.keys(PX).length)LS.set("pxt",Date.now());
-  if(snap())save();
-  draw();setPx(bad?bad+" prezzi non aggiornati (il piano gratuito ha un limite di richieste al minuto).":"");
+  if(!navigator.onLine){if(!silent)setPx(L("Sei offline: uso gli ultimi prezzi.","You are offline: using the last prices."));return;}
+  setPx(L("Aggiorno…","Updating…"));let bad=0;
+  const tks=[...new Set(S.data.items.filter(i=>i.tk).map(i=>i.tk))];
+  if(tks.length){if(D)bad=tks.length;else try{const r=await fetch(PRICE_FN+"?s="+encodeURIComponent(tks.map(ySym).join(",")),{headers:await fnHeaders()}),j=await r.json();
+      for(const t of tks){const p=j.prices&&j.prices[ySym(t)];if(p&&p.price>0)PX[t]={p:p.price,cur:p.currency,t:p.time};else bad++;}}catch{bad+=tks.length;}}
+  if(!(await fxUpdate()))bad++;
+  LS.set("px",PX);if(bad<tks.length+1)LS.set("pxt",Date.now());
+  if(snap())save();draw();
+  setPx(bad?(D?L("I prezzi automatici funzionano quando l'app è collegata a Supabase.","Automatic prices work when the app is connected to Supabase."):bad+L(" prezzi non aggiornati: controlla i codici dei titoli."," prices not updated: check the ticker codes.")):"");
 }   // valori provvisori (CHF per 1 unità): i cambi live arrivano in un passo successivo
 const S={y:0,m:1,data:{items:[]},base:LS.get("base","EUR")==="USD"?"USD":"EUR",cat:null,edit:null,scr:"auth"};
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -436,21 +450,28 @@ function mktLine(m,cat,label){                                    // "di cui ver
 const L=(a,b)=>LANG==="en"?b:a;                                  // testo in italiano o in inglese
 const mName=m=>L(MESI[m-1].toLowerCase(),MESI[m-1]);              // "settembre" / "September"
 const isPast=(y,m)=>y<NY||(y===NY&&m<NM);                        // mese già finito?
-function toClose(){                                               // {y,m} del mese da confermare, oppure null
+function autoClose(){                                             // ogni mese finito si fissa da solo: valori copiati come "foto" e segnati come chiusi automaticamente
+  if(S.y>NY||!S.data.items.length)return;const last=S.y<NY?12:NM-1,C=S.data.conf=S.data.conf||{};let ch=false;
+  for(let m=1;m<=last;m++){if(C[m])continue;
+    let any=false;for(const i of S.data.items){const ks=Object.keys(i.v).map(Number).filter(k=>k<=m);if(!ks.length)continue;any=true;if(i.v[m]===undefined)i.v[m]=lastV(i,m);}
+    if(any){C[m]="auto:"+new Date().toISOString().slice(0,10);ch=true;}}
+  if(ch)save();
+}
+const isAuto=c=>typeof c==="string"&&c.startsWith("auto:"),confDate=c=>new Date(isAuto(c)?c.slice(5):c).toLocaleDateString(L("it-IT","en-GB"));
+function toClose(){                                               // {y,m} del mese chiuso automaticamente da controllare, oppure null
   if(S.y!==NY||!uid)return null;
   const y=NM>1?NY:NY-1,m=NM>1?NM-1:12;                            // a gennaio si conferma dicembre dell'anno prima
   const d=y===S.y?S.data:LS.get(kd(y),null);
   if(!d||!(d.items||[]).length)return null;                       // senza voci non c'è niente da confermare
-  if((d.conf||{})[m])return null;                                 // già confermato
-  if(y!==S.y&&!years.includes(y))return null;
-  if(LS.get("later:"+uid,"")===new Date().toDateString())return null;   // "Più tardi" vale fino a domani
-  return {y,m};
+  const c=(d.conf||{})[m];if(!c||!isAuto(c))return null;          // si mostra solo per un mese chiuso in automatico e non ancora controllato
+  if(LS.get("ack:"+uid+":"+y+"-"+m,0))return null;
+  return {y,m,c};
 }
 function monthNote(){
   const c=toClose();if(!c)return "";const n=mName(c.m);
-  return `<div class="card note"><b>${L(MESI[c.m-1]+" è finito: conferma i suoi valori",n+" is over: confirm its values")}</b>
-  <p class="mini" style="margin:6px 0 10px">${L("Controlla i saldi di fine mese, correggi quello che è cambiato e salva: così "+n+" resta fissato e la variazione del mese è giusta.","Check the end-of-month balances, fix what changed and save: that way "+n+" stays fixed and the monthly change is right.")}</p>
-  <div class="row"><button class="go" data-a="close" data-y="${c.y}" data-m="${c.m}">${L("Conferma "+n,"Confirm "+n)}</button><button class="ghost" data-a="later">${L("Più tardi","Later")}</button></div></div>`;
+  return `<div class="card note"><b>${L(MESI[c.m-1]+" è stato chiuso automaticamente",MESI[c.m-1]+" was closed automatically")}</b>
+  <p class="mini" style="margin:6px 0 10px">${L("I valori di fine mese sono stati fissati da soli. Se un saldo non torna, correggilo: la modifica resta.","End-of-month values were fixed automatically. If a balance looks wrong, correct it: the change sticks.")}</p>
+  <div class="row"><button class="go" data-a="close" data-y="${c.y}" data-m="${c.m}">${L("Controlla "+n,"Check "+n)}</button><button class="ghost" data-a="ack" data-y="${c.y}" data-m="${c.m}">Ok</button></div></div>`;
 }
 
 function say(t,cls){const m=$("msg");m.textContent=t;m.className=cls||"";}
@@ -530,7 +551,8 @@ async function push(){
 function save(){LS.set(kd(S.y),S.data);const d=LS.get(kdirty(),[]);if(!d.includes(S.y))LS.set(kdirty(),[...d,S.y]);net();push();}
 
 /* ---------- schermate ---------- */
-function screen(n){S.scr=n;for(const id of ["auth","pick","home","cat","upd","fin","reb","tax","set","hist","exp","trend","inc","sav","goals","hof","valid","graph","igraph","sim","guide","setup","acct"])$(id).hidden=id!==n;
+const SEC_OF=n=>({home:"asset",cat:"asset",upd:"asset",fin:"asset",reb:"asset",tax:"asset",sim:"asset",hist:"asset",exp:"spese",trend:"spese",graph:"spese",inc:"entrate",igraph:"entrate",sav:"risparmio",goals:"obiettivi",hof:"hof"})[n]||"sistema";
+function screen(n){S.scr=n;document.body.dataset.sec=SEC_OF(n);for(const id of ["auth","pick","home","cat","upd","fin","reb","tax","set","hist","exp","trend","inc","sav","goals","hof","valid","graph","igraph","sim","guide","setup","acct"])$(id).hidden=id!==n;
   $("bar").hidden=!["home","cat","upd","fin","reb","tax","set","hist","exp","trend","inc","sav","goals","hof","valid","graph","igraph","sim","guide","setup","acct"].includes(n);S.menu=false;S.sub=false;S.esub=false;S.isub=false;renderMenu();}
 const pill=(c,p,n)=>{if(!p)return "";const x=(c-p)/Math.abs(p)*100,k=n||Math.abs(x)<0.005?"fl":x>0?"up":"dn";
   return `<i class="pill ${k}">${x<0?"−":"+"}${Math.abs(x).toFixed(2).replace(".",",")}%</i>`;};
@@ -552,7 +574,7 @@ function pmsg(t,err){const p=$("pmsg");p.textContent=t;p.style.color=err?"var(--
 async function route(session){
   if(!session){uid=null;screen("auth");net();return;}
   if(uid===session.user.id) return;
-  uid=session.user.id;S.email=session.user.email;
+  uid=session.user.id;S.email=session.user.email;S.token=session.access_token||"";
   await cfgPull();simLoad();if(!LS.get("since:"+uid,""))LS.set("since:"+uid,new Date().toISOString());
   try{years=await loadYears();}
   catch(e){years=[];screen("pick");renderTiles();return pmsg(e.code==="42P01"?"Tabella mancante: esegui lo script SQL su Supabase.":"Errore: "+e.message,true);}
@@ -582,7 +604,7 @@ async function openYear(y){
   S.data=await pull(y);S.data.items=S.data.items||[];
   if(!S.data.items.length&&!S.data.carried)await carryOver(y);
   if(D&&!S.data.items.length&&y===NY&&!LS.get("noseed:"+uid,0))seed(); else if(snap())save();
-  seedExp();applyRec();
+  seedExp();applyRec();autoClose();
   refresh(true);
   renderHome();screen("home");showWelcome();
 }
@@ -713,11 +735,11 @@ function renderSet(){
   $("set").innerHTML=`<div class="top"><button class="ghost" data-a="home">‹ Home</button></div><h1 style="font-size:1.5rem;margin:14px 0 0">Impostazioni</h1>
   <h2 class="gt">Anno</h2><div class="row" style="align-items:center;justify-content:space-between"><span>${L("Stai lavorando sul ","You are working on ")}<b>${S.y}</b></span><button class="ghost" data-a="years">Cambia anno</button></div>
   <h2 class="gt">Lingua</h2><div class="row">${langBtns("flex:1;padding:8px")}</div>
-  <h2 class="gt">Prezzi</h2><div class="row"><button class="ghost" data-a="px" style="flex:1">Aggiorna prezzi</button><button class="ghost" data-a="key" style="flex:1">Cambia chiave Twelve Data</button></div><p class="mini pxs" style="display:block">${pxLabel()}</p>
+  <h2 class="gt">Prezzi</h2><p class="mini" style="display:block">${L("I prezzi dei titoli arrivano da Yahoo Finance; il cambio EUR/USD dalla Banca Centrale Europea. Si aggiornano da soli a ogni apertura.","Security prices come from Yahoo Finance; the EUR/USD rate from the European Central Bank. They update by themselves on every launch.")}</p><button class="ghost" data-a="px" style="width:100%">Aggiorna prezzi</button><p class="mini pxs" style="display:block">${pxLabel()}</p>
   <h2 class="gt">${L("Promemoria","Reminder")}</h2><p class="mini">${L("Le notifiche vere richiedono un server: in alternativa metti nel calendario del telefono un promemoria che si ripete il 1° di ogni mese alle 9.","Real notifications need a server: as an alternative, add a reminder to your phone's calendar that repeats on the 1st of every month at 9am.")}</p><button class="ghost" data-a="ics" style="width:100%">${L("Aggiungi promemoria al calendario","Add reminder to calendar")}</button>
   <h2 class="gt">${L("Guida","Guide")}</h2><div class="row"><button class="ghost" data-a="setup" style="flex:1">${L("Configurazione guidata","Guided setup")}</button><button class="ghost" data-a="guide" style="flex:1">${L("Guida completa","Full guide")}</button></div><p style="margin-top:8px"><button class="ghost" data-a="welcome" style="width:100%">${L("Rivedi il benvenuto","Welcome again")}</button></p>
   <p class="smsg mini" role="status"></p>`
-  +(D?`<h2 class="gt">${L("Dati di prova","Demo data")}</h2><p class="mini">${L("Cancella i dati inventati della modalità demo per iniziare con i tuoi. Non torneranno da soli.","Deletes the invented demo data so you can start with your own. They won't come back.")}</p><button class="ghost" data-a="wipe" style="width:100%;color:var(--err);border-color:var(--err)">${L("Svuota dati di prova","Clear demo data")}</button>`:"");
+  +(D?`<h2 class="gt">${L("Dati di prova","Demo data")}</h2><p class="mini">${L("Cancella i dati inventati della modalità demo per iniziare con i tuoi. Non torneranno da soli.","Deletes the invented demo data so you can start with your own. They won't come back.")}</p><button class="ghost" data-a="wipe" style="width:100%;color:var(--err);border-color:var(--err)">${L("Svuota dati di prova","Clear demo data")}</button>${FORCE_DEMO?`<p style="margin-top:10px"><button class="ghost" data-a="undemo" style="width:100%">${L("Esci dalla modalità demo e torna all'accesso","Leave demo mode and go back to sign-in")}</button></p>`:""}`:"");
 }
 function renderAcct(){
   const dirty=LS.get(kdirty(),[]).length||LS.get(kcdirty(),0),since=LS.get("since:"+uid,"");
@@ -748,10 +770,10 @@ function openLegal(){
   <h3>${L("Informativa privacy","Privacy notice")}</h3>
   <p>${L("Titolare del trattamento: ","Data controller: ")}${own}${mail?` (${mail})`:""}. ${L("Dati trattati: email e password (gestite da Supabase, mai visibili al titolare in chiaro) e i dati che inserisci: voci, valori, spese, entrate, obiettivi.","Data processed: email and password (handled by Supabase, never visible to the owner in clear text) and the data you enter: items, values, expenses, income, goals.")}</p>
   <p>${L("Dove stanno: sul tuo dispositivo e, se l'app è collegata, nel database Supabase del titolare, protetto da regole che mostrano a ogni utente solo i propri dati. Il titolare, come amministratore tecnico, può accedere al database per manutenzione e non usa i dati per altri scopi. Nessuna pubblicità, nessuna vendita di dati.","Where it lives: on your device and, if the app is connected, in the owner's Supabase database, protected by rules that show each user only their own data. The owner, as technical administrator, can access the database for maintenance and does not use the data for other purposes. No advertising, no sale of data.")}</p>
-  <p>${L("Servizi terzi: Supabase (autenticazione e database), Twelve Data (riceve solo i codici dei titoli e la tua chiave, per i prezzi), Google (solo se scegli l'accesso con Google). L'app usa esclusivamente memoria tecnica locale, nessun cookie di tracciamento.","Third-party services: Supabase (authentication and database), Twelve Data (receives only security tickers and your key, for prices), Google (only if you choose Google sign-in). The app uses local technical storage only, no tracking cookies.")}</p>
+  <p>${L("Servizi terzi: Supabase (autenticazione e database), Yahoo Finance tramite il tuo Supabase (riceve solo i codici dei titoli, per i prezzi), Banca Centrale Europea tramite Frankfurter (per il cambio), Google (solo se scegli l'accesso con Google). L'app usa esclusivamente memoria tecnica locale, nessun cookie di tracciamento.","Third-party services: Supabase (authentication and database), Yahoo Finance through your Supabase (receives only security tickers, for prices), European Central Bank through Frankfurter (for the exchange rate), Google (only if you choose Google sign-in). The app uses local technical storage only, no tracking cookies.")}</p>
   <p>${L("I tuoi diritti (GDPR): accesso, rettifica, portabilità e cancellazione. Esporta dati ti dà una copia completa in qualsiasi momento; per cancellare l'account scrivi all'indirizzo sopra. I dati restano finché l'account esiste.","Your rights (GDPR): access, rectification, portability and erasure. Export data gives you a full copy at any time; to delete your account write to the address above. Data is kept as long as the account exists.")}</p>
   <h3>Copyright</h3>
-  <p>© ${yr} ${own}. ${L("Codice, grafica e testi dell'app sono di proprietà del titolare: non è consentito copiarli, modificarli o redistribuirli senza autorizzazione. Librerie di terzi: supabase-js (licenza MIT). Dati di mercato: Twelve Data.","The app's code, design and texts belong to the owner: copying, modifying or redistributing them without permission is not allowed. Third-party libraries: supabase-js (MIT licence). Market data: Twelve Data.")}</p></div>`;
+  <p>© ${yr} ${own}. ${L("Codice, grafica e testi dell'app sono di proprietà del titolare: non è consentito copiarli, modificarli o redistribuirli senza autorizzazione. Librerie di terzi: supabase-js (licenza MIT). Dati di mercato: Yahoo Finance e Banca Centrale Europea.","The app's code, design and texts belong to the owner: copying, modifying or redistributing them without permission is not allowed. Third-party libraries: supabase-js (MIT licence). Market data: Yahoo Finance and European Central Bank.")}</p></div>`;
   document.querySelector("main").appendChild(d);
   d.addEventListener("click",e=>{if(e.target.closest("[data-x]")||e.target===d)d.remove();});
 }
@@ -763,7 +785,7 @@ function wipeDemo(){
 function makeIcs(){                                               // evento mensile per il calendario del telefono
   const now=new Date(),st=new Date(now.getFullYear(),now.getMonth()+1,1,9,0,0),f=d=>d.getFullYear()+p2(d.getMonth()+1)+p2(d.getDate())+"T"+p2(d.getHours())+p2(d.getMinutes())+"00";
   const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Mozzi//IT","BEGIN:VEVENT","UID:mozzi-chiusura-mese-"+Date.now()+"@app","DTSTAMP:"+f(now),"DTSTART:"+f(st),"DURATION:PT30M","RRULE:FREQ=MONTHLY;BYMONTHDAY=1",
-    "SUMMARY:"+L("Mozzi: conferma il mese appena finito","Mozzi: confirm last month"),"DESCRIPTION:"+L("Apri l'app, controlla i saldi di fine mese e premi Conferma e salva. Poi scarica un backup.","Open the app, check end-of-month balances and tap Confirm and save. Then download a backup."),
+    "SUMMARY:"+L("Mozzi: controlla il mese appena chiuso","Mozzi: check last month"),"DESCRIPTION:"+L("Apri l'app, controlla i saldi del mese chiuso in automatico e correggi quello che non torna. Poi scarica un backup.","Open the app, check the balances of the automatically closed month and correct what looks wrong. Then download a backup."),
     "BEGIN:VALARM","TRIGGER:PT0M","ACTION:DISPLAY","DESCRIPTION:Mozzi","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([ics],{type:"text/calendar"}));a.download="mozzi-promemoria.ics";document.body.appendChild(a);a.click();a.remove();
   const sm=smsgEl();if(sm)sm.textContent=L("File del calendario creato: aprilo e conferma l'aggiunta.","Calendar file created: open it and confirm.");
@@ -773,7 +795,7 @@ async function exportAll(){
   for(const y of years){let d=y===S.y?S.data:LS.get(kd(y),null);
     if(!d&&!D&&navigator.onLine){try{const {data}=await db.from("year_data").select("data").eq("year",y).maybeSingle();d=data&&data.data;}catch{}}
     out.years[y]=d||{items:[]};}
-  out.cfg=CFG;out.device={sim:LS.get(ksim(),null),fire:LS.get("fire:"+uid,null),lang:LANG,tdkey:LS.get("tdkey","")};
+  out.cfg=CFG;out.device={sim:LS.get(ksim(),null),fire:LS.get("fire:"+uid,null),lang:LANG};
   LS.set("exported:"+uid,1);
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,1)],{type:"application/json"}));
   a.download="mozzi-"+new Date().toISOString().slice(0,10)+".json";document.body.appendChild(a);a.click();a.remove();
@@ -792,7 +814,7 @@ async function importFile(f){
     years.sort((a,b)=>b-a);LS.set(ckYears(),years);LS.set(kdirty(),d);
     if(ys.includes(S.y))S.data=LS.get(kd(S.y));
     if(j.cfg&&typeof j.cfg==="object"){LS.set(kcfg(),j.cfg);cfgLoad();LS.set(kcdirty(),1);}
-    if(j.device){if(j.device.sim)LS.set(ksim(),j.device.sim);if(j.device.fire)LS.set("fire:"+uid,j.device.fire);if(j.device.tdkey&&!LS.get("tdkey",""))LS.set("tdkey",j.device.tdkey);simLoad();}
+    if(j.device){if(j.device.sim)LS.set(ksim(),j.device.sim);if(j.device.fire)LS.set("fire:"+uid,j.device.fire);simLoad();}
     await push();m.textContent="Importati "+ys.length+" anni.";
   });
 }
@@ -842,8 +864,8 @@ function renderUpd(){
   let h=`<div class="top"><button class="ghost" data-a="home">‹ Home</button><span class="mini">${S.y}</span></div><h1 style="font-size:1.5rem;margin:14px 0 0">Aggiorna mese</h1>`+mbar()+
     `<p class="mini">Cambia solo ciò che è cambiato: le voci che non tocchi restano come il mese prima.</p>`;
   const past=isPast(S.y,S.m),cf=(S.data.conf||{})[S.m];
-  if(past)h+=cf?`<p class="mini" style="color:var(--ok)">${L("Mese confermato il ","Month confirmed on ")}${new Date(cf).toLocaleDateString(L("it-IT","en-GB"))}.</p>`
-    :`<p class="mini" style="color:var(--acc)">${L("Mese non ancora confermato: controlla i valori di fine mese e premi Conferma.","Month not confirmed yet: check the end-of-month values and tap Confirm.")}</p>`;
+  if(past)h+=cf?`<p class="mini" style="color:var(--ok)">${isAuto(cf)?L("Mese chiuso automaticamente il ","Month closed automatically on "):L("Mese confermato da te il ","Month confirmed by you on ")}${confDate(cf)}. ${L("Puoi correggere i valori e salvare.","You can correct the values and save.")}</p>`
+    :`<p class="mini" style="color:var(--acc)">${L("Mese non ancora chiuso.","Month not closed yet.")}</p>`;
   let any=false;
   for(const [id,n] of CATS){
     const its=S.data.items.filter(i=>i.cat===id);if(!its.length)continue;any=true;
@@ -855,7 +877,7 @@ function renderUpd(){
   if(TKCAT.some(c=>S.data.items.some(i=>i.cat===c))){const f=(S.data.flows||{})[S.m]||{};any=true;
     h+=`<h2 class="gt">${L("Versamenti e prelievi del mese","Deposits and withdrawals this month")}</h2><p class="mini">${L("Soldi nuovi messi negli investimenti (+) o tolti (−), in EUR. Servono a separare il rendimento del mercato dai tuoi versamenti.","New money put into (+) or taken out of (−) investments, in EUR. Used to separate market performance from your deposits.")}</p><div class="card ug">`
       +FIN().map(([id,n])=>`<label class="urow"><span>${n}</span><input data-f="${id}" inputmode="decimal" placeholder="0" value="${f[id]!==undefined?esc(String(f[id])):""}"></label>`).join("")+`</div>`;}
-  h+=any?`<p style="margin-top:18px"><button class="go" data-a="saveall">${past?L("Conferma e salva","Confirm and save"):"Salva tutto"}</button></p><p id="umsg" class="mini" role="status"></p>`:`<p class="mini">Non ci sono ancora voci: aggiungile dalle pagine degli asset.</p>`;
+  h+=any?`<p style="margin-top:18px"><button class="go" data-a="saveall">${past?L("Salva le correzioni","Save corrections"):"Salva tutto"}</button></p><p id="umsg" class="mini" role="status"></p>`:`<p class="mini">Non ci sono ancora voci: aggiungile dalle pagine degli asset.</p>`;
   $("upd").innerHTML=h;
 }
 function saveAll(){
@@ -875,7 +897,7 @@ function saveAll(){
   if(n||cf)save();
   if(cf)renderUpd();                                              // aggiorna la riga "Mese confermato il …"
   const msg=bad?bad+L(" valori non validi: correggili e salva di nuovo."," invalid values: fix them and save again.")
-    :(n?n+L(" voci aggiornate"," items updated"):L("Nessuna modifica","No change"))+(cf?L(" · "+MESI[S.m-1]+" confermato."," · "+MESI[S.m-1]+" confirmed."):".");
+    :(n?n+L(" voci aggiornate"," items updated"):L("Nessuna modifica","No change"))+(cf?L(" · "+MESI[S.m-1]+" fissato."," · "+MESI[S.m-1]+" fixed."):".");
   $("umsg").style.color=bad?"var(--err)":"var(--ok)";$("umsg").textContent=msg;
   if(cf)$("umsg").insertAdjacentHTML("beforeend",` <button class="ghost" data-a="export" style="padding:4px 10px;margin-left:6px">${L("Scarica backup","Download backup")}</button>`);
 }
@@ -903,22 +925,24 @@ function renderCat(){
   $("cat").innerHTML=h;if(S.edit)syncForm();S.tkPick=null;
 }
 async function tkSearch(){
-  const q=$("tkq").value.trim(),box=$("tkres");if(!q)return;const key=LS.get("tdkey","");
-  if(!key){ask("Chiave gratuita di Twelve Data (la crei su twelvedata.com)","incolla qui la chiave",k=>{LS.set("tdkey",k);tkSearch();});return;}
+  const q=$("tkq").value.trim(),box=$("tkres");if(!q)return;
+  if(D){box.innerHTML=`<p class="mini">${L("La ricerca funziona quando l'app è collegata a Supabase.","Search works when the app is connected to Supabase.")}</p>`;return;}
   if(!navigator.onLine){box.innerHTML=`<p class="mini">${L("Serve internet per cercare.","You need to be online to search.")}</p>`;return;}
   box.innerHTML=`<p class="mini">${L("Cerco…","Searching…")}</p>`;
-  try{const r=await fetch("https://api.twelvedata.com/symbol_search?symbol="+encodeURIComponent(q)+"&outputsize=12&apikey="+key),j=await r.json(),rows=(j.data||[]).filter(x=>x.symbol);
-    box.innerHTML=rows.length?`<div class="list" style="margin-bottom:10px">`+rows.map(x=>`<button type="button" class="item" data-a="tkpick" data-t="${esc(x.symbol)}" data-n="${esc(x.instrument_name||x.symbol)}" data-ex="${esc(x.mic_code||x.exchange||"")}" data-cur="${esc(x.currency||"")}"><span>${esc(x.symbol)} · ${esc(x.instrument_name||"")}<small>${esc(x.exchange||"")}${x.mic_code?" ("+esc(x.mic_code)+")":""} · ${esc(x.currency||"?")} · ${esc(x.instrument_type||"")}</small></span><b>›</b></button>`).join("")+`</div>`
-      :`<p class="mini">${L("Nessun risultato.","No results.")}</p>`;}
+  try{const r=await fetch(PRICE_FN+"?q="+encodeURIComponent(q),{headers:await fnHeaders()}),j=await r.json(),rows=(j.results||[]).filter(x=>x.symbol);
+    box.innerHTML=rows.length?`<div class="list" style="margin-bottom:10px">`+rows.map(x=>`<button type="button" class="item" data-a="tkpick" data-t="${esc(x.symbol)}" data-n="${esc(x.name||x.symbol)}"><span>${esc(x.symbol)} · ${esc(x.name||"")}<small>${esc(x.exchange||"")} · ${esc(x.type||"")}</small></span><b>›</b></button>`).join("")+`</div>`
+      :`<p class="mini">${L("Nessun risultato: prova con il codice (es. VWCE) o con il nome.","No results: try the ticker (e.g. VWCE) or the name.")}</p>`;}
   catch{box.innerHTML=`<p class="mini">${L("Ricerca non riuscita, riprova.","Search failed, try again.")}</p>`;}
 }
-async function tkPick(b){                                         // aggiunge il titolo trovato al catalogo dell'utente e ne scarica il prezzo
-  const d=b.dataset,t=d.t.toUpperCase(),cur=["EUR","USD"].includes(d.cur)?d.cur:"EUR";
-  if(!CATALOG.find(c=>c.t===t)){CFG.tickers=CFG.tickers||[];const i=CFG.tickers.findIndex(c=>c.t===t),rec={t,n:d.n,cat:S.cat,cur,ex:d.ex,p:0};if(i<0)CFG.tickers.push(rec);else CFG.tickers[i]=rec;cfgSave();}
+async function tkPick(b){                                         // aggiunge il titolo trovato al catalogo dell'utente e ne scarica prezzo e valuta
+  const d=b.dataset,t=d.t.toUpperCase();let cur="EUR",x=0,curReal="";
+  try{const r=await fetch(PRICE_FN+"?s="+encodeURIComponent(t),{headers:await fnHeaders()}),j=await r.json(),p=j.prices&&j.prices[t];if(p){x=Number(p.price)||0;curReal=p.currency||"";}}catch{}
+  if(["EUR","USD"].includes(curReal))cur=curReal;
+  if(!CATALOG.find(c=>c.t===t)){CFG.tickers=CFG.tickers||[];const i=CFG.tickers.findIndex(c=>c.t===t),rec={t,n:d.n,cat:S.cat,cur,ex:"",p:x};if(i<0)CFG.tickers.push(rec);else CFG.tickers[i]=rec;cfgSave();}
+  if(x>0){PX[t]={p:x,cur:curReal};LS.set("px",PX);}
   S.tkPick=t;renderCat();const e=$("emsg");
-  if(e&&!["EUR","USD"].includes(d.cur))e.textContent=L("Questo titolo è quotato in "+d.cur+": l'app gestisce solo EUR e USD, lo tratto come EUR.","This security trades in "+d.cur+": the app only handles EUR and USD, so it is treated as EUR.");
-  try{const r=await fetch("https://api.twelvedata.com/price?symbol="+t+(d.ex?"&exchange="+d.ex:"")+"&apikey="+LS.get("tdkey","")),j=await r.json(),x=Number(j.price);
-    if(x>0){PX[t]={p:x};LS.set("px",PX);if(e){e.style.color="var(--ok)";e.textContent=L("Prezzo attuale: ","Current price: ")+x+" "+cur;}}}catch{}
+  if(e){if(curReal&&!["EUR","USD"].includes(curReal))e.textContent=L("Questo titolo è quotato in "+curReal+": l'app gestisce solo EUR e USD, lo tratto come EUR.","This security trades in "+curReal+": the app only handles EUR and USD, so it is treated as EUR.");
+    else if(x>0){e.style.color="var(--ok)";e.textContent=L("Prezzo attuale: ","Current price: ")+x+" "+cur;}}
 }
 function saveItem(){
   const et=$("et"),tk=et?et.value:"",cu=tk==="__c",v=parseNum($("ev").value);
@@ -965,669 +989,4 @@ function yAvg(fn){const v=[];for(let m=1;m<=lastM();m++)v.push(fn(m));const f=v.
 const pillInv=(c,p)=>pill(c,p).replace(/pill (up|dn)/,(x,k)=>"pill "+(k==="up"?"dn":"up"));          // per le spese: salire è rosso, scendere è verde
 const cmpRow=(c,p,avg,inv)=>{const P=inv?pillInv:pill,a=P(c,p),b=P(c,avg);
   return a||b?`<p class="mini chg" style="margin:4px 0 0">${a?a+"<small>"+L("mese prima","prev. month")+"</small>":""}${b?b+"<small>"+L("media annua","yearly avg.")+"</small>":""}</p>`:"";};
-const totCatIn=(m,cat,c)=>S.data.items.filter(i=>i.cat===cat).reduce((a,i)=>a+cvTo(val(i,m),i.cur,c,m),0);
-const back=(t)=>`<div class="top"><button class="ghost" data-a="home">‹ Home</button><span class="mini">${S.y}</span></div><h1 style="font-size:1.5rem;margin:14px 0 0">${t}</h1>`;
-const dmy=d=>d.slice(8,10)+"/"+d.slice(5,7);
-
-// ricorrenti: ogni mese inserisco da sola la spesa, nel giorno scelto, finché non viene eliminata
-function applyRec(){let ch=false;const last=lastM(),td=today(),skip=S.data.recSkip||[];
-  for(const r of CFG.rec){const [fy,fm]=String(r.from||"").split("-").map(Number);
-    for(let m=1;m<=last;m++){if(S.y<fy||(S.y===fy&&m<fm))continue;if(skip.includes(r.id+":"+m))continue;
-      if(EXP().some(e=>e.r===r.id&&mOf(e.d)===m))continue;
-      const dim=new Date(S.y,m,0).getDate(),d=S.y+"-"+p2(m)+"-"+p2(Math.min(r.day||1,dim));if(d>td)continue;
-      EXP().push({id:nid(),d,w:r.w,c:r.c,s:r.s,a:r.a,n:r.n||"",r:r.id});ch=true;}}
-  if(ch)save();}
-
-// dati di prova per spese, entrate, obiettivi e budget: solo in modalità demo, una volta sola per anno
-function seedExp(){
-  if(!DEMO_DATA||!D||S.y!==NY||S.data.demoExp||LS.get("noseed:"+uid,0))return;
-  if(!CFG.rec.length){CFG.rec.push({id:nid(),w:"affitto",c:"fisse",s:"Affitto",a:700,n:"",day:1,from:NY+"-01"},{id:nid(),w:"netflix",c:"fisse",s:"Abbonamenti",a:12.99,n:"",day:15,from:NY+"-01"});cfgSave();}
-  let seed=7;const rnd=()=>(seed=(seed*48271)%2147483647)/2147483647,pick=a=>a[Math.floor(rnd()*a.length)],td=today();
-  const words=["supermercato","supermercato","supermercato","pizza","caffè","caffè","benzina","ristorante","farmacia","aperitivo","amazon","treno","palestra","cinema","parrucchiere","vestiti","regalo"];
-  const price={supermercato:[35,90],pizza:[10,18],caffè:[1.2,3],benzina:[50,75],ristorante:[25,60],farmacia:[8,30],aperitivo:[8,15],amazon:[15,60],treno:[5,40],palestra:[40,40],cinema:[9,12],parrucchiere:[20,25],vestiti:[30,120],regalo:[20,70]};
-  for(let m=1;m<=NM;m++){const k=9+Math.floor(rnd()*5);
-    for(let i=0;i<k;i++){const w=pick(words),[lo,hi]=price[w],a=Math.round((lo+rnd()*(hi-lo))*2)/2,d=NY+"-"+p2(m)+"-"+p2(1+Math.floor(rnd()*28)),dd=CFG.dict[w]||DEF_DICT[w];if(d>td)continue;EXP().push({id:nid(),d,w,c:dd[0],s:dd[1],a,n:""});}
-    const ds=NY+"-"+p2(m)+"-27";if(ds<=td)INC().push({id:nid(),d:ds,c:"Stipendio",a:2100,n:""});
-    if(m%3===0)INC().push({id:nid(),d:NY+"-"+p2(m)+"-10",c:"Extra",a:150,n:"rimborso"});}
-  if(!(S.data.goals||[]).length)S.data.goals=[{id:nid(),name:"Palestra 3 volte a settimana",st:{1:"g",2:"y",3:"g",4:"r",5:"g",6:"g",7:"y",8:"g",9:"g"}}];
-  S.data.budget=S.data.budget||{cibo:400,svago:150};
-  S.data.demoExp=true;save();
-}
-
-/* ---- Inserisci spesa ---- */
-function renderExp(){
-  const ed=S.eedit&&EXP().find(e=>e.id===S.eedit),w=S.eword!==undefined?S.eword:(ed?ed.w:""),known=CFG.dict[w.trim().toLowerCase()];
-  const cc=known?known[0]:(ed?ed.c:"altro"),ss=known?known[1]:(ed?ed.s:"");
-  const all=[...EXP()].sort((a,b)=>b.d.localeCompare(a.d)||b.id.localeCompare(a.id)),q=(S.xq||"").trim().toLowerCase(),xm=Number(S.xm)||0;
-  const filt=all.filter(e=>(!q||(e.w+" "+(e.n||"")+" "+ECN(e.c)+" "+e.s).toLowerCase().includes(q))&&(!xm||mOf(e.d)===xm)),list=filt.slice(0,(S.eall||q||xm)?400:15);
-  let h=back(L("Inserisci spesa","Add expense"));
-  h+=`<div class="card"><label for="ew">${L("Cosa hai comprato","What did you buy")}</label><input id="ew" list="words" autocomplete="off" placeholder="${L("es. pizza","e.g. pizza")}" value="${esc(w)}"><datalist id="words">${Object.keys(CFG.dict).sort().map(k=>`<option value="${esc(k)}">`).join("")}</datalist>
-  <p class="mini" style="margin:-6px 0 10px">${L("Se la parola è nuova scegli categoria e sottocategoria: la ricorderò.","If the word is new, pick category and subcategory: I'll remember it.")}</p>
-  <div class="row"><div style="flex:1"><label for="ec2">${L("Categoria","Category")}</label><select id="ec2"${known?" disabled":""}>${ECATS().map(([id,n])=>`<option value="${id}"${id===cc?" selected":""}>${n}</option>`).join("")}</select></div>
-  <div style="flex:1"><label for="es2">${L("Sottocategoria","Subcategory")}</label><input id="es2" list="subs" autocomplete="off" value="${esc(ss)}"${known?" disabled":""}><datalist id="subs">${subsOf(cc).map(x=>`<option value="${esc(x)}">`).join("")}</datalist></div></div>
-  <div class="row"><div style="flex:1"><label for="ea">${L("Importo (EUR)","Amount (EUR)")}</label><input id="ea" inputmode="decimal" placeholder="es. 12,50" value="${ed?ed.a:""}"></div>
-  <div style="flex:1"><label for="edt">${L("Data","Date")}</label><input id="edt" type="date" value="${ed?ed.d:(S.y===NY?today():S.y+"-01-01")}"></div></div>
-  <label for="en2">${L("Nota (facoltativa)","Note (optional)")}</label><input id="en2" value="${ed?esc(ed.n||""):""}">`;
-  h+=ed?"":`<label class="chk"><input id="erec" type="checkbox"> ${L("Ricorrente: la inserisco da sola ogni mese, in questo giorno","Recurring: added automatically every month on this day")}</label>`;
-  h+=`<div class="row"><button class="go" data-a="esave">${ed?L("Salva modifiche","Save changes"):L("Aggiungi spesa","Add expense")}</button>${ed?`<button class="ghost" data-a="ecancel">Annulla</button><button class="ghost" data-a="edel"${S.delAsk?' style="color:var(--err);border-color:var(--err)"':""}>${S.delAsk?L("Tocca ancora","Tap again"):L("Elimina","Delete")}</button>`:""}</div><p id="xmsg" class="mini" role="status"></p></div>`;
-  h+=`<h2 class="gt">${q||xm?L("Risultati","Results")+` <span class="mini">· ${filt.length} · ${eur(filt.reduce((a,e)=>a+e.a,0))}</span>`:L("Ultime spese","Latest expenses")+` <span class="mini">· ${eur(all.reduce((a,e)=>a+e.a,0))} ${L("nell'anno","this year")}</span>`}</h2>`;
-  if(all.length)h+=`<div class="row" style="margin:0 0 10px"><input id="xq" placeholder="${L("Cerca: parola, nota, categoria","Search: word, note, category")}" value="${esc(S.xq||"")}" autocomplete="off" style="margin:0;flex:1"><select id="xm" style="margin:0;width:auto"><option value="0">${L("Tutti i mesi","All months")}</option>${MESI.map((x,i)=>`<option value="${i+1}"${xm===i+1?" selected":""}>${x.slice(0,3)}</option>`).join("")}</select></div>`;
-  h+=list.length?`<div class="list">`+list.map(e=>`<button class="item" data-a="eedit" data-id="${e.id}"><span>${esc(e.w)}${e.r?" ↻":""}<small>${dmy(e.d)} · ${ECN(e.c)} / ${esc(e.s)}${e.n?" · "+esc(e.n):""}</small></span><b>${eur(e.a)}</b></button>`).join("")+`</div>`
-    +(filt.length>list.length?`<button class="ghost" data-a="eall">${L("Mostra tutte","Show all")} (${filt.length})</button>`:""):`<p class="mini">${all.length?L("Nessuna spesa corrisponde alla ricerca.","No expense matches the search."):L("Nessuna spesa ancora.","No expenses yet.")}</p>`;
-  if(CFG.rec.length)h+=`<h2 class="gt">${L("Spese ricorrenti","Recurring expenses")}</h2><div class="card ug">`+CFG.rec.map(r=>`<div class="hrow"><span>${esc(r.w)}<small class="mini" style="display:block">${L("giorno","day")} ${r.day} · ${ECN(r.c)} / ${esc(r.s)}</small></span><span style="white-space:nowrap">${eur(r.a)} <button class="ghost" data-a="rdel" data-id="${r.id}" style="padding:4px 8px;margin-left:6px">✕</button></span></div>`).join("")+`</div><p class="mini">${L("Eliminare una ricorrente non cancella le spese già inserite.","Deleting a recurring expense keeps the ones already added.")}</p>`;
-  $("exp").innerHTML=h;
-}
-function saveExp(){
-  const m=$("xmsg"),w=$("ew").value.trim(),a=parseNum($("ea").value),d=$("edt").value,c=$("ec2").value,s=$("es2").value.trim()||subsOf(c)[0]||"Varie",n=$("en2").value.trim();
-  if(!w)return m.textContent=L("Scrivi cosa hai comprato.","Write what you bought.");
-  if(!(a>0)||!isFinite(a))return m.textContent=L("Inserisci un importo maggiore di 0.","Enter an amount greater than 0.");
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||Number(d.slice(0,4))!==S.y)return m.textContent=L("La data deve essere dell'anno ","The date must be in ")+S.y+".";
-  const k=w.toLowerCase();if(!CFG.dict[k]||CFG.dict[k][0]!==c||CFG.dict[k][1]!==s){CFG.dict[k]=[c,s];cfgSave();}
-  let e=S.eedit&&EXP().find(x=>x.id===S.eedit);
-  if(e)Object.assign(e,{w,a,d,c,s,n});
-  else{e={id:nid(),w,a,d,c,s,n};EXP().push(e);
-    if($("erec")&&$("erec").checked){const r={id:nid(),w,c,s,a,n,day:Number(d.slice(8,10)),from:d.slice(0,7)};CFG.rec.push(r);e.r=r.id;cfgSave();}}
-  S.eedit=null;S.eword=undefined;S.delAsk=false;save();renderExp();$("xmsg").textContent=L("Spesa salvata.","Expense saved.");
-}
-
-/* ---- Andamento spese ---- */
-function renderTrend(){
-  const T=sumE(S.m),P=S.m>1?sumE(S.m-1):0,A=yAvg(m=>sumE(m));
-  let h=back(L("Andamento spese","Spending trend"))+mbar();
-  h+=`<div class="card"><div class="mini">${L("Spese di","Expenses in")} ${mName(S.m)}</div><div class="big">${eur(T)}</div>${cmpRow(T,P,A,true)}<p class="mini" style="margin:6px 0 0">${L("Media annua","Yearly average")}: ${eur(A)}</p></div>`;
-  h+=`<p style="margin:12px 0"><button class="${S.cmp?"ghost":"go"}" data-a="cmp" style="width:100%">${S.cmp?L("Chiudi confronto","Close comparison"):L("Confronta mesi","Compare months")}</button></p>`;
-  if(S.cmp){
-    const M=S.cmpM||[S.m],C=S.cmpC||"";
-    h+=`<p class="mini" style="margin:0 0 4px">${L("Tocca i mesi da confrontare, quanti vuoi.","Tap the months to compare, as many as you like.")}</p><div class="chips">${[...Array(lastM()).keys()].map(i=>i+1).map(m=>`<button class="chip" data-a="cm" data-m="${m}" aria-pressed="${M.includes(m)}">${MESI[m-1].slice(0,3)}</button>`).join("")}<button class="chip" data-a="cmall" aria-pressed="${M.length===lastM()}">${L("Tutti","All")}</button></div>`;
-    h+=`<label for="cmpc">${L("Filtra per categoria","Filter by category")}</label><select id="cmpc"><option value="">${L("Tutte le categorie","All categories")}</option>${ECATS().map(([id,n])=>`<option value="${id}"${C===id?" selected":""}>${n}</option>`).join("")}</select>`;
-    const rows=C?[...new Set(EXP().filter(e=>e.c===C).map(e=>e.s))].map(s=>[s,m=>sumE(m,C,s)]):ECATS().map(([id,n])=>[n,m=>sumE(m,id)]);
-    const heat=(v,vals)=>{if(M.length<2)return "";const mn=Math.min(...vals),mx=Math.max(...vals);if(mx-mn<0.005||!v)return "";const t=(v-mn)/(mx-mn);   // verde = mese meno caro, rosso = più caro
-      return ` style="background:${t<0.5?`color-mix(in srgb,var(--ok) ${Math.round((0.5-t)*2*42)}%,transparent)`:`color-mix(in srgb,var(--err) ${Math.round((t-0.5)*2*42)}%,transparent)`}"`;};
-    const line=(n,f,bold)=>{const vals=M.map(f);return `<tr><td>${bold?"<b>"+n+"</b>":esc(n)}</td>${M.map((m,i)=>`<td${heat(vals[i],vals)}>${bold?"<b>"+eur(vals[i])+"</b>":eur(vals[i])}</td>`).join("")}</tr>`;};
-    h+=`<div class="card ug" style="overflow-x:auto"><table class="tbl"><tr><th></th>${M.map(m=>`<th>${MESI[m-1].slice(0,3)}</th>`).join("")}</tr>`+rows.map(([n,f])=>line(n,f,false)).join("")+line(L("Totale","Total"),m=>sumE(m,C),true)+`</table></div>`
-      +(M.length>1?`<p class="mini" style="margin:6px 0 0">${L("Per ogni riga: verde il mese in cui hai speso meno, rosso quello in cui hai speso di più, sfumature nel mezzo.","Per row: green the month you spent least, red the one you spent most, shades in between.")}</p>`:"");
-    if(C){const mx=Math.max(1,...[...Array(lastM()).keys()].map(i=>sumE(i+1,C)));
-      h+=`<h2 class="gt">${ECN(C)} ${L("mese per mese","month by month")}</h2><div class="card ug">`+[...Array(lastM()).keys()].map(i=>{const v=sumE(i+1,C);return `<div class="hrow"><span style="width:40px">${MESI[i].slice(0,3)}</span><span class="bar" style="flex:1;margin:0"><i style="width:${v/mx*100}%"></i></span><span style="width:90px;text-align:right">${eur(v)}</span></div>`;}).join("")+`</div>`;}
-  }else{
-    h+=`<div class="cats">`+ECATS().map(([id,n])=>{const v=sumE(S.m,id),p=S.m>1?sumE(S.m-1,id):0,open=S.tcat===id,b=Number((S.data.budget||{})[id])||0;
-      const bud=b?`<small class="mini" style="display:block">${L("budget","budget")} ${eur(b)}${v>b?" · <b style=\"color:var(--err)\">"+L("sforato di","over by")+" "+eur(v-b)+"</b>":""}</small><span class="bar" style="display:block;width:90px;margin:4px 0 0 auto"><i style="width:${Math.min(100,v/b*100)}%${v>b?";background:var(--err)":""}"></i></span>`:"";
-      let x=`<button class="catbtn" data-a="tc" data-c="${id}" aria-expanded="${open}"><span>${n}</span><span class="r"><b>${eur(v)}</b>${pillInv(v,p)}${bud}</span></button>`;
-      if(open){const ss=[...new Set(EXP().filter(e=>mOf(e.d)===S.m&&e.c===id).map(e=>e.s))];
-        x+=`<div class="card ug" style="margin-top:-6px">`+(ss.length?ss.map(s=>`<div class="hrow"><span>${esc(s)}</span><span><b>${eur(sumE(S.m,id,s))}</b>${S.m>1?pillInv(sumE(S.m,id,s),sumE(S.m-1,id,s)):""}</span></div>`).join(""):`<p class="mini" style="margin:8px 0">${L("Nessuna spesa in questo mese.","No expenses this month.")}</p>`)+`</div>`;}
-      return x;}).join("")+`</div>`;
-  }
-  $("trend").innerHTML=h;
-}
-
-/* ---- Grafico spese: barre per mese, un colore per categoria ---- */
-function renderGraph(){
-  const n=lastM(),hide=S.gHide||[],cats=ECATS().filter(c=>!hide.includes(c[0])),gm=S.gm&&S.gm<=n?S.gm:S.m;
-  const yTot={};ECATS().forEach(([id])=>{yTot[id]=0;for(let m=1;m<=n;m++)yTot[id]+=sumE(m,id);});const yAll=Object.values(yTot).reduce((a,b)=>a+b,0);
-  const tot=m=>cats.reduce((a,[id])=>a+sumE(m,id),0),mx=Math.max(1,...[...Array(n).keys()].map(i=>tot(i+1)));
-  let h=back(L("Grafico spese","Expense chart"))+`<p class="mini">${L("Ogni barra è un mese, ogni colore una categoria. Tocca una categoria nella legenda per nasconderla, tocca una barra per vedere il dettaglio del mese.","Each bar is a month, each colour a category. Tap a category in the legend to hide it, tap a bar to see that month's detail.")}</p>`;
-  const W=340,H=230,l=8,r=8,t=22,bt=26,step=(W-l-r)/n,bw=step*0.62;let g="";
-  for(let i=0;i<n;i++){const m=i+1,x=l+i*step+(step-bw)/2;let y=H-bt;const T=tot(m);
-    for(const [id] of cats){const v=sumE(m,id);if(!v)continue;const hh=v/mx*(H-t-bt);y-=hh;g+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(hh,0.5).toFixed(1)}" fill="${ECOL(id)}"${m===gm?"":' opacity=".8"'}/>`;}
-    if(T)g+=`<text class="ax" x="${(x+bw/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle">${kfmt(T)}</text>`;
-    g+=`<text class="ax" x="${(x+bw/2).toFixed(1)}" y="${H-8}" text-anchor="middle"${m===gm?' font-weight="700"':""}>${MESI[i].slice(0,3)}</text>`;
-    g+=`<rect data-a="xgbar" data-m="${m}" x="${(l+i*step).toFixed(1)}" y="0" width="${step.toFixed(1)}" height="${H}" fill="transparent" style="cursor:pointer"/>`;}
-  h+=`<div class="card"><svg class="chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${L("Spese per mese e categoria","Expenses by month and category")}">${g}</svg></div>`;
-  h+=`<div class="card ug">`+ECATS().map(([id,nm])=>`<button class="hrow lg${hide.includes(id)?" off":""}" data-a="xgcat" data-c="${id}" style="width:100%;background:none;border:0;font:inherit;color:inherit;cursor:pointer"><span><i class="dot" style="background:${ECOL(id)}"></i>${esc(nm)}</span><span class="mini">${eur(yTot[id])}${yAll?" · "+pct(yTot[id]/yAll*100):""}</span></button>`).join("")+`</div>`;
-  const rows=cats.map(([id,nm])=>[id,nm,sumE(gm,id)]).filter(x=>x[2]>0).sort((a,b)=>b[2]-a[2]),T=tot(gm);
-  h+=`<h2 class="gt">${MESI[gm-1]}: ${eur(T)}</h2><div class="card ug">`+(rows.length?rows.map(([id,nm,v])=>`<div class="hrow"><span><i class="dot" style="background:${ECOL(id)}"></i>${esc(nm)}</span><span><b>${eur(v)}</b> <small class="mini">${pct(v/T*100)}</small></span></div>`).join(""):`<p class="mini" style="margin:8px 0">${L("Nessuna spesa in questo mese.","No expenses this month.")}</p>`)+`</div>`;
-  $("graph").innerHTML=h;
-}
-
-/* ---- Grafico entrate: barre per mese, un colore per categoria, linea della media ---- */
-const IPAL=["#14b8a6","#f59e0b","#8b5cf6","#ec4899","#3b82f6","#84cc16","#f97316","#06b6d4"],ICOL=c=>IPAL[Math.max(0,CFG.inc.indexOf(c))%IPAL.length];
-function renderIGraph(){
-  const n=lastM(),hide=S.igHide||[],cats=CFG.inc.filter(c=>!hide.includes(c)),gm=S.igm&&S.igm<=n?S.igm:S.m;
-  const yTot={};CFG.inc.forEach(c=>{yTot[c]=0;for(let m=1;m<=n;m++)yTot[c]+=sumI(m,c);});const yAll=Object.values(yTot).reduce((a,b)=>a+b,0);
-  const tot=m=>cats.reduce((a,c)=>a+sumI(m,c),0),avg=yAvg(tot),mx=Math.max(1,avg,...[...Array(n).keys()].map(i=>tot(i+1)));
-  let h=back(L("Grafico entrate","Income chart"))+`<p class="mini">${L("Ogni barra è un mese, ogni colore una categoria; la linea tratteggiata è la media annua. Tocca una categoria per nasconderla, tocca una barra per il dettaglio del mese.","Each bar is a month, each colour a category; the dashed line is the yearly average. Tap a category to hide it, tap a bar for that month's detail.")}</p>`;
-  const W=340,H=230,l=8,r=8,t=22,bt=26,step=(W-l-r)/n,bw=step*0.62,Y=v=>H-bt-v/mx*(H-t-bt);let g="";
-  for(let i=0;i<n;i++){const m=i+1,x=l+i*step+(step-bw)/2;let y=H-bt;const T=tot(m);
-    for(const c of cats){const v=sumI(m,c);if(!v)continue;const hh=v/mx*(H-t-bt);y-=hh;g+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(hh,0.5).toFixed(1)}" fill="${ICOL(c)}"${m===gm?"":' opacity=".8"'}/>`;}
-    if(T)g+=`<text class="ax" x="${(x+bw/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle">${kfmt(T)}</text>`;
-    g+=`<text class="ax" x="${(x+bw/2).toFixed(1)}" y="${H-8}" text-anchor="middle"${m===gm?' font-weight="700"':""}>${MESI[i].slice(0,3)}</text>`;
-    g+=`<rect data-a="xigbar" data-m="${m}" x="${(l+i*step).toFixed(1)}" y="0" width="${step.toFixed(1)}" height="${H}" fill="transparent" style="cursor:pointer"/>`;}
-  if(avg>0)g+=`<line x1="${l}" x2="${W-r}" y1="${Y(avg).toFixed(1)}" y2="${Y(avg).toFixed(1)}" stroke="var(--mut)" stroke-dasharray="4 4" stroke-width="1.2"/><text class="ax" x="${W-r}" y="${(Y(avg)-4).toFixed(1)}" text-anchor="end">${L("media","avg")} ${kfmt(avg)}</text>`;
-  h+=`<div class="card"><svg class="chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${L("Entrate per mese e categoria","Income by month and category")}">${g}</svg></div>`;
-  h+=`<div class="card ug">`+CFG.inc.map(c=>`<button class="hrow lg${hide.includes(c)?" off":""}" data-a="xigcat" data-c="${esc(c)}" style="width:100%;background:none;border:0;font:inherit;color:inherit;cursor:pointer"><span><i class="dot" style="background:${ICOL(c)}"></i>${esc(c)}</span><span class="mini">${eur(yTot[c])}${yAll?" · "+pct(yTot[c]/yAll*100):""}</span></button>`).join("")+`</div>`;
-  const T=tot(gm),P=gm>1?tot(gm-1):0,rows=cats.map(c=>[c,sumI(gm,c)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
-  h+=`<h2 class="gt">${MESI[gm-1]}: ${eur(T)}${pill(T,P)}${pill(T,avg)}</h2><div class="card ug">`+(rows.length?rows.map(([c,v])=>`<div class="hrow"><span><i class="dot" style="background:${ICOL(c)}"></i>${esc(c)}</span><span><b>${eur(v)}</b> <small class="mini">${pct(v/T*100)}</small></span></div>`).join(""):`<p class="mini" style="margin:8px 0">${L("Nessuna entrata in questo mese.","No income this month.")}</p>`)+`</div><p class="mini">${L("Le due etichette accanto al totale: variazione rispetto al mese prima e rispetto alla media annua.","The two labels next to the total: change vs previous month and vs yearly average.")}</p>`;
-  $("igraph").innerHTML=h;
-}
-
-/* ---- Entrate ---- */
-function renderInc(){
-  const T=sumI(S.m),P=S.m>1?sumI(S.m-1):0,A=yAvg(m=>sumI(m)),ed=S.iedit&&INC().find(e=>e.id===S.iedit);
-  let h=back(L("Entrate","Income"))+mbar();
-  h+=`<div class="card"><div class="mini">${L("Entrate di","Income in")} ${mName(S.m)}</div><div class="big">${eur(T)}</div>${cmpRow(T,P,A,false)}<p class="mini" style="margin:6px 0 0">${L("Media annua","Yearly average")}: ${eur(A)}</p>
-  <div style="margin-top:10px">${CFG.inc.map(c=>`<div class="hrow"><span>${esc(c)}</span><b>${eur(sumI(S.m,c))}</b></div>`).join("")}</div></div>`;
-  h+=`<div class="card" style="margin-top:12px"><div class="row"><div style="flex:1"><label for="ic">${L("Categoria","Category")}</label><select id="ic">${CFG.inc.map(c=>`<option${ed&&ed.c===c?" selected":""}>${esc(c)}</option>`).join("")}</select></div>
-  <div style="flex:1"><label for="ia">${L("Importo (EUR)","Amount (EUR)")}</label><input id="ia" inputmode="decimal" placeholder="es. 1500" value="${ed?ed.a:""}"></div></div>
-  <div class="row"><div style="flex:1"><label for="idt">${L("Data","Date")}</label><input id="idt" type="date" value="${ed?ed.d:(isNow(S.m)?today():S.y+"-"+p2(S.m)+"-01")}"></div><div style="flex:1"><label for="inn">${L("Nota","Note")}</label><input id="inn" value="${ed?esc(ed.n||""):""}"></div></div>
-  <div class="row"><button class="go" data-a="isave">${ed?L("Salva modifiche","Save changes"):L("Aggiungi entrata","Add income")}</button>${ed?`<button class="ghost" data-a="icancel">Annulla</button><button class="ghost" data-a="idel"${S.delAsk?' style="color:var(--err);border-color:var(--err)"':""}>${S.delAsk?L("Tocca ancora","Tap again"):L("Elimina","Delete")}</button>`:""}</div><p id="imsg" class="mini" role="status"></p></div>`;
-  const list=INC().filter(e=>mOf(e.d)===S.m).sort((a,b)=>b.d.localeCompare(a.d));
-  h+=`<h2 class="gt">${L("Entrate di","Income in")} ${mName(S.m)}</h2>`+(list.length?`<div class="list">`+list.map(e=>`<button class="item" data-a="iedit" data-id="${e.id}"><span>${esc(e.c)}<small>${dmy(e.d)}${e.n?" · "+esc(e.n):""}</small></span><b>${eur(e.a)}</b></button>`).join("")+`</div>`:`<p class="mini">${L("Nessuna entrata in questo mese.","No income this month.")}</p>`);
-  h+=`<p class="mini">${L("Le categorie delle entrate si modificano in Impostazioni → Parole e categorie.","Income categories are edited in Settings → Words and categories.")}</p>`;
-  $("inc").innerHTML=h;
-}
-function saveInc(){
-  const m=$("imsg"),c=$("ic").value,a=parseNum($("ia").value),d=$("idt").value,n=$("inn").value.trim();
-  if(!(a>0)||!isFinite(a))return m.textContent=L("Inserisci un importo maggiore di 0.","Enter an amount greater than 0.");
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)||Number(d.slice(0,4))!==S.y)return m.textContent=L("La data deve essere dell'anno ","The date must be in ")+S.y+".";
-  let e=S.iedit&&INC().find(x=>x.id===S.iedit);
-  if(e)Object.assign(e,{c,a,d,n});else INC().push({id:nid(),c,a,d,n});
-  S.iedit=null;S.delAsk=false;S.m=mOf(d);save();renderInc();$("imsg").textContent=L("Entrata salvata.","Income saved.");
-}
-
-/* ---- Risparmio ---- */
-function renderSav(){
-  const I=sumI(S.m),E=sumE(S.m),R=I-E,pc=I>0?R/I*100:null;
-  const Ip=S.m>1?sumI(S.m-1):0,Ep=S.m>1?sumE(S.m-1):0,pcp=Ip>0?(Ip-Ep)/Ip*100:null;
-  const Ia=yAvg(m=>sumI(m)),Ea=yAvg(m=>sumE(m)),pca=Ia>0?(Ia-Ea)/Ia*100:null;
-  let yI=0,yE=0;for(let m=1;m<=lastM();m++){yI+=sumI(m);yE+=sumE(m);}
-  const liq=totCatIn(S.m,"liq","EUR"),cov=Ea>0?liq/Ea:null;
-  const pts=(a,b)=>a===null||b===null?"":` <small>(${a-b>=0?"+":"−"}${Math.abs(a-b).toFixed(1).replace(".",",")} ${L("punti","pts")})</small>`;
-  let h=back(L("Risparmio","Savings"))+mbar();
-  h+=`<div class="card"><div class="mini">${L("Risparmio di","Savings in")} ${mName(S.m)}</div><div class="big ${R<0?"dn":""}">${eur(R)}</div>
-  <div class="mini">${L("Percentuale di risparmio","Savings rate")}: <b>${pct(pc)}</b></div>
-  <p class="mini" style="margin:4px 0 0">${L("Mese prima","Prev. month")}: ${pct(pcp)}${pts(pc,pcp)} · ${L("Media annua","Yearly avg.")}: ${pct(pca)}${pts(pc,pca)}</p>
-  <div style="margin-top:12px"><div class="hrow"><span>${L("Entrate","Income")}</span><span><b>${eur(I)}</b>${pill(I,Ip)}</span></div><div class="hrow"><span>${L("Uscite","Expenses")}</span><span><b>${eur(E)}</b>${pillInv(E,Ep)}</span></div></div></div>`;
-  h+=`<h2 class="gt">${L("Anno","Year")} ${S.y}</h2><div class="card ug"><div class="hrow"><span>${L("Entrate","Income")}</span><b>${eur(yI)}</b></div><div class="hrow"><span>${L("Uscite","Expenses")}</span><b>${eur(yE)}</b></div><div class="hrow"><span>${L("Risparmio","Savings")}</span><b>${eur(yI-yE)}${yI?` <small class="mini">${pct((yI-yE)/yI*100)}</small>`:""}</b></div></div>`;
-  if(Ea>0){const wr=Math.max(0.5,Math.min(20,Number(LS.get("fire:"+uid,3.5))||3.5)),mult=100/wr,spY=Ea*12,fire=spY*mult,nwE=totIn(S.m,"EUR"),prog=fire?Math.min(999,nwE/fire*100):null,savM=Ia-Ea;let rr=0.03;try{rr=simRun().real;}catch{}
-    let yrs=null;if(nwE>=fire)yrs=0;else if(savM>0||rr>0){let v=nwE;for(let n=1;n<=1200;n++){v=v*Math.pow(1+rr,1/12)+savM;if(v>=fire){yrs=n/12;break;}}}
-    h+=`<h2 class="gt">${L("Indipendenza finanziaria","Financial independence")}</h2><div class="card"><div class="big">${pct(prog)}</div><div class="bar" style="margin:8px 0"><i style="width:${Math.min(100,prog)}%"></i></div>
-    <p class="mini" style="margin:0">${L("Patrimonio di","Net worth of")} <b>${eur(nwE)}</b> ${L("su un obiettivo di","towards a target of")} <b>${eur(fire)}</b>: ${p1x(mult)} ${L("volte le spese annue di","times yearly expenses of")} ${eur(spY)}, ${L("cioè un prelievo del","i.e. a withdrawal rate of")} ${p1x(wr)}% ${L("all'anno","per year")}.
-    ${yrs===0?L("Obiettivo già raggiunto.","Target already reached."):yrs!==null?L("Con un risparmio medio di","With average savings of")+" <b>"+eur(savM)+"</b> "+L("al mese e un rendimento reale del","per month and a real return of")+" "+p1x(rr*100)+"% ("+L("dal simulatore","from the simulator")+") "+L("ci arrivi in circa","you get there in about")+" <b>"+p1x(yrs)+" "+L("anni","years")+"</b>.":L("A questo ritmo non ci arrivi: serve risparmiare di più o investire.","At this pace you won't get there: save more or invest.")}</p>
-    <div class="row" style="align-items:center;margin-top:10px"><label for="firer" style="margin:0;flex:1">${L("Tasso di prelievo annuo (%)","Yearly withdrawal rate (%)")}</label><input id="firer" inputmode="decimal" value="${p1x(wr)}" style="margin:0;width:90px"></div>
-    <p class="mini" style="margin:6px 0 0">${L("3,5% = 28,6 anni di spese (prudente); 4% = 25 anni; 2,9% ≈ 35 anni.","3.5% = 28.6 years of expenses (cautious); 4% = 25 years; 2.9% ≈ 35 years.")}</p></div>`;}
-  h+=`<h2 class="gt">${L("Mesi coperti dalla liquidità","Months covered by cash")}</h2><div class="card">`+(cov!==null?`<div class="big">${cov.toFixed(1).replace(".",",")} ${L("mesi","months")}</div><p class="mini" style="margin:4px 0 0">${L("La liquidità di","Cash in")} ${mName(S.m)} (${eur(liq)}) ${L("copre questo numero di mesi di spese medie","covers this many months of average expenses")} (${eur(Ea)}/${L("mese","month")}).</p>`:`<p class="mini" style="margin:0">${L("Inserisci le spese per calcolarlo.","Add expenses to calculate it.")}</p>`)+`</div>`;
-  $("sav").innerHTML=h;
-}
-
-/* ---- Obiettivi e budget ---- */
-function renderGoals(){
-  const G=S.data.goals=S.data.goals||[],B=S.data.budget=S.data.budget||{};
-  let h=back(L("Obiettivi","Goals"))+`<p class="mini">${L("A fine mese tocca la casella: verde = raggiunto, giallo = così così, rosso = no. Tocca ancora per cambiare.","At month end tap the box: green = done, yellow = so-so, red = no. Tap again to change.")}</p>`;
-  // crescita del patrimonio nell'anno: obiettivo in % o in euro, barra che supera il 100% se si va oltre
-  const NG=S.data.ngoal||{mode:"pct",v:""},P=histData(),v=parseNum(String(NG.v??""));
-  h+=`<h2 class="gt">${L("Crescita del patrimonio nell'anno","Net worth growth this year")}</h2><div class="card"><div class="row" style="align-items:center"><div class="cur" style="margin:0"><button data-a="ngm" data-m="pct" aria-pressed="${NG.mode!=="amt"}">%</button><button data-a="ngm" data-m="amt" aria-pressed="${NG.mode==="amt"}">EUR</button></div><input id="ngv" inputmode="decimal" placeholder="${NG.mode==="amt"?L("es. 5000","e.g. 5000"):L("es. 10","e.g. 10")}" value="${esc(String(NG.v??""))}" style="margin:0;flex:1"></div>`;
-  if(v>0&&P.length>=2){const first=P[0],last=P[P.length-1],start=first.e,cur=last.e,need=NG.mode==="amt"?v:start*v/100,got=cur-start,prog=need>0?got/need*100:null;
-    const col=prog>=100?"var(--ok)":prog<0?"var(--err)":"var(--acc)",w=prog===null?0:Math.max(0,Math.min(prog,125))/125*100;
-    h+=`<div class="hrow" style="margin-top:14px"><span class="mini">${mName(first.m)} → ${mName(last.m)}</span><b>${fmt(start,"EUR")} → ${fmt(cur,"EUR")}</b></div>
-    <div class="gbar"><div class="bar" style="margin:0"><i style="width:${w}%;background:${col}"></i></div><span class="mark"></span></div>
-    <p class="mini" style="margin:0;display:block">${prog===null?"":`<b style="color:${col}">${pct(prog)}</b> ${L("dell'obiettivo","of the target")} · ${got>=0?"+":"−"}${fmt(Math.abs(got),"EUR")} ${L("su","of")} +${fmt(need,"EUR")}${prog>100?` · <b class="up">${L("oltre di","beyond by")} ${fmt(got-need,"EUR")}</b>`:""}`}</p>`;}
-  else if(v>0)h+=`<p class="mini" style="display:block;margin-top:10px">${L("Servono almeno due mesi con dati per misurare la crescita.","At least two months with data are needed to measure growth.")}</p>`;
-  else h+=`<p class="mini" style="display:block;margin-top:10px">${L("Scrivi quanto vuoi crescere quest'anno, in percentuale o in euro: la barra ti dice a che punto sei e segna anche quando vai oltre.","Write how much you want to grow this year, in percent or euros: the bar tells you where you are and also shows when you go beyond.")}</p>`;
-  h+=`</div>`;
-  h+=`<h2 class="gt">${L("Obiettivi personali","Personal goals")}</h2><div class="card ug" style="overflow-x:auto">`+(G.length?`<table class="gtbl"><tr><th></th>${MESI.map(x=>`<th>${x.slice(0,1)}</th>`).join("")}<th></th></tr>`+G.map(g=>`<tr><td>${esc(g.name)}</td>${[...Array(12).keys()].map(i=>`<td><button class="gb ${(g.st||{})[i+1]||""}" data-a="gtap" data-id="${g.id}" data-m="${i+1}" aria-label="${MESI[i]}"></button></td>`).join("")}<td><button class="ghost" data-a="gdel" data-id="${g.id}" style="padding:2px 6px">✕</button></td></tr>`).join("")+`</table>`:`<p class="mini" style="margin:8px 0">${L("Nessun obiettivo: aggiungine uno.","No goals yet: add one.")}</p>`)+`</div>`;
-  h+=`<div class="row" style="margin-top:10px"><input id="gn" placeholder="${L("es. Palestra 3 volte a settimana","e.g. Gym 3 times a week")}" style="margin:0"><button class="go" data-a="gadd" style="width:auto">Aggiungi</button></div>`;
-  h+=`<h2 class="gt">${L("Budget mensile per categoria","Monthly budget per category")}</h2><p class="mini">${L("Quanto vuoi spendere al massimo ogni mese. La barra mostra","Max you want to spend each month. The bar shows")} ${mName(S.m)}.</p><div class="card ug">`
-    +ECATS().map(([id,n])=>{const b=Number(B[id])||0,s=sumE(S.m,id),w=b?Math.min(100,s/b*100):0;
-      return `<label class="urow"><span>${n}<small>${eur(s)}${b?" / "+eur(b):""}</small>${b?`<span class="bar" style="display:block;width:120px"><i style="width:${w}%${s>b?";background:var(--err)":""}"></i></span>`:""}</span><input data-b="${id}" inputmode="decimal" placeholder="—" value="${B[id]||""}"></label>`;}).join("")+`</div>`;
-  $("goals").innerHTML=h;
-}
-
-/* ---- Hall of fame ---- */
-function renderHof(){
-  const rows=[];
-  for(const y of years){const d=y===S.y?S.data:LS.get(kd(y),null);if(!d)continue;const ex=d.exp||[],inc=d.inc||[],last=y===NY?NM:12;
-    for(let m=1;m<=last;m++){const I=inc.filter(e=>mOf(e.d)===m).reduce((a,e)=>a+e.a,0),E=ex.filter(e=>mOf(e.d)===m).reduce((a,e)=>a+e.a,0);if(!I&&!E)continue;rows.push({y,m,I,E,R:I-E,pc:I>0?(I-E)/I*100:null});}}
-  const best=(f,ok)=>{const r=rows.filter(ok);return r.length?r.reduce((a,b)=>f(b)>f(a)?b:a):null;};
-  const cards=[[L("Mese con più entrate","Highest income month"),best(r=>r.I,r=>r.I>0),r=>eur(r.I)],[L("Mese con meno uscite","Lowest spending month"),best(r=>-r.E,r=>r.E>0),r=>eur(r.E)],[L("Mese con più uscite","Highest spending month"),best(r=>r.E,r=>r.E>0),r=>eur(r.E)],[L("Miglior risparmio","Best savings"),best(r=>r.R,r=>r.I>0),r=>eur(r.R)+(r.pc!==null?" · "+pct(r.pc):"")],[L("Miglior percentuale di risparmio","Best savings rate"),best(r=>r.pc,r=>r.pc!==null),r=>pct(r.pc)]];
-  let h=back("Hall of fame")+`<p class="mini">${L("I record tra tutti gli anni salvati su questo dispositivo.","Records across all years saved on this device.")}</p>`;
-  const nw=[];for(const y of years){const d=y===S.y?S.data:LS.get(kd(y),null);if(!d||!(d.items||[]).length)continue;const last=y===NY?NM:12,F=d.fx||{};
-    for(let m=1;m<=last;m++){const U=F[m]?RATE.EUR/F[m]:RATE.USD,r=k=>k==="USD"?U:RATE[k],v=d.items.reduce((a,i)=>a+(y===S.y?val(i,m):lastV(i,m))*r(i.cur)/r("EUR"),0);if(v)nw.push({y,m,v});}}
-  nw.sort((a,b)=>a.y-b.y||a.m-b.m).forEach((r,i,A)=>{const p=A[i-1];r.ch=p&&p.y===r.y&&p.v?(r.v-p.v)/Math.abs(p.v)*100:null;});
-  const mx=f=>A=>A.length?A.reduce((a,b)=>f(b)>f(a)?b:a):null,top=mx(r=>r.v)(nw),ch=nw.filter(r=>r.ch!==null),bestM=mx(r=>r.ch)(ch),worstM=mx(r=>-r.ch)(ch);
-  const yg=[...new Set(nw.map(r=>r.y))].map(y=>{const r=nw.filter(x=>x.y===y),f=r[0].v,l=r[r.length-1].v;return {y,g:f?(l-f)/Math.abs(f)*100:null,n:r.length};}).filter(x=>x.g!==null&&x.n>1),bestY=mx(x=>x.g)(yg);
-  const pc=x=>(x>=0?"+":"−")+Math.abs(x).toFixed(2).replace(".",",")+"%",cardN=(t,r,v)=>`<div class="card" style="margin-bottom:10px"><div class="mini">${t}</div>${r?`<div class="big" style="font-size:1.4rem">${r.m?MESI[r.m-1]+" ":""}${r.y}</div><div class="mini">${v}</div>`:`<div class="mini">—</div>`}</div>`;
-  h+=`<h2 class="gt">${L("Patrimonio","Net worth")}</h2>`+(nw.length?cardN(L("Massimo storico","All-time high"),top,top?fmt(top.v,"EUR"):"")+cardN(L("Mese migliore","Best month"),bestM,bestM?`<b class="up">${pc(bestM.ch)}</b> · ${fmt(bestM.v,"EUR")}`:"")+cardN(L("Mese peggiore","Worst month"),worstM,worstM?`<b class="dn">${pc(worstM.ch)}</b> · ${fmt(worstM.v,"EUR")}`:"")+cardN(L("Anno migliore","Best year"),bestY,bestY?`<b class="${bestY.g>=0?"up":"dn"}">${pc(bestY.g)}</b> ${L("dal primo all'ultimo mese","from first to last month")}`:""):`<p class="mini">${L("Nessun dato sul patrimonio.","No net worth data.")}</p>`);
-  h+=`<h2 class="gt">${L("Spese ed entrate","Expenses and income")}</h2>`;
-  if(!rows.length)h+=`<p class="mini">${L("Nessun dato ancora: inserisci spese ed entrate.","No data yet: add expenses and income.")}</p>`;
-  else{h+=cards.map(([t,r,show])=>`<div class="card" style="margin-bottom:10px"><div class="mini">${t}</div>${r?`<div class="big" style="font-size:1.4rem">${MESI[r.m-1]} ${r.y}</div><div class="mini">${show(r)}</div>`:`<div class="mini">—</div>`}</div>`).join("");
-    const ys=[...new Set(rows.map(r=>r.y))].sort((a,b)=>b-a);
-    h+=`<h2 class="gt">${L("Anno per anno","Year by year")}</h2><div class="card ug" style="overflow-x:auto"><table class="tbl"><tr><th></th><th>${L("Entrate","Income")}</th><th>${L("Uscite","Expenses")}</th><th>${L("Risparmio","Savings")}</th></tr>`
-      +ys.map(y=>{const r=rows.filter(x=>x.y===y),I=r.reduce((a,x)=>a+x.I,0),E=r.reduce((a,x)=>a+x.E,0);return `<tr><td>${y}</td><td>${eur(I)}</td><td>${eur(E)}</td><td>${eur(I-E)}${I?` <small class="mini">${pct((I-E)/I*100)}</small>`:""}</td></tr>`;}).join("")+`</table></div>`;}
-  $("hof").innerHTML=h;
-}
-
-/* ---- Validazione ---- */
-function renderValid(){
-  const q=(S.vq||"").trim().toLowerCase(),words=Object.keys(CFG.dict).sort((a,b)=>a.localeCompare(b)).filter(w=>!q||w.includes(q));
-  let h=`<div class="top"><button class="ghost" data-a="acct">‹ Account</button><span class="mini">${S.y}</span></div><h1 style="font-size:1.5rem;margin:14px 0 0">${L("Parole e categorie","Words and categories")}</h1>`+`<p class="mini">${L("Controlla parole e categorie delle spese. Se rinomini una parola con il nome di un'altra, le unisci (es. supermarket → supermercato). Le modifiche valgono anche per le spese già inserite.","Check expense words and categories. Renaming a word to another word's name merges them. Changes also apply to expenses already added.")}</p>`;
-  h+=`<input id="vq" placeholder="${L("Cerca parola","Search word")}" value="${esc(S.vq||"")}" autocomplete="off">`;
-  h+=`<div class="card ug">`+(words.length?words.map(w=>{const [c,s]=CFG.dict[w],n=EXP().filter(e=>e.w.toLowerCase()===w).length;
-    return `<div class="vrow"><input data-wn="${esc(w)}" value="${esc(w)}"><select data-wc="${esc(w)}">${ECATS().map(([id,nm])=>`<option value="${id}"${id===c?" selected":""}>${nm}</option>`).join("")}</select><input data-ws="${esc(w)}" list="subs-${c}" value="${esc(s)}"><button class="ghost" data-a="wdel" data-w="${esc(w)}" style="padding:4px 8px">✕</button>${n?`<small class="mini">${n} ${L("spese quest'anno","expenses this year")}</small>`:""}</div>`;}).join(""):`<p class="mini" style="margin:8px 0">${L("Nessuna parola.","No words.")}</p>`)+`</div>`;
-  h+=ECATS().map(([id])=>`<datalist id="subs-${id}">${subsOf(id).map(x=>`<option value="${esc(x)}">`).join("")}</datalist>`).join("");
-  const nDef=Object.keys(CFG.dict).filter(w=>DEF_DICT[w]).length;
-  h+=`<p style="margin-top:12px"><button class="go" data-a="vsave">${L("Salva modifiche","Save changes")}</button></p><p id="vmsg" class="mini" role="status"></p>`;
-  if(nDef)h+=`<p><button class="ghost" data-a="wdefdel" style="width:100%">${L("Elimina le parole di esempio","Delete the sample words")} (${nDef})</button></p><p class="mini">${L("Toglie solo le parole di partenza fornite dall'app; quelle che hai aggiunto tu restano. Le spese già inserite non cambiano.","Removes only the starter words shipped with the app; the ones you added stay. Existing expenses don't change.")}</p>`;
-  h+=`<h2 class="gt">${L("Categorie delle spese","Expense categories")}</h2><p class="mini">${L("Cambia nome o colore e premi Salva modifiche. Eliminando una categoria, parole e spese passano in \"Altro\".","Change name or colour, then tap Save changes. Deleting a category moves its words and expenses to \"Altro\".")}</p><div class="card ug">`
-    +ECATS().map(([id,n,col])=>`<div class="hrow"><input type="color" data-cc="${id}" value="${col}"><input data-cn="${id}" value="${esc(n)}" style="margin:0;flex:1">${id==="altro"?"":`<button class="ghost" data-a="cdel" data-c="${id}" style="padding:4px 8px">✕</button>`}</div>`).join("")+`</div>
-  <div class="row" style="margin-top:10px"><input id="cnn" placeholder="${L("Nuova categoria","New category")}" style="margin:0"><button class="go" data-a="cadd" style="width:auto">Aggiungi</button></div>`;
-  h+=`<h2 class="gt">${L("Categorie delle entrate","Income categories")}</h2><div class="card ug">`+CFG.inc.map((c,i)=>`<div class="hrow"><input data-ic="${i}" value="${esc(c)}" style="margin:0"><button class="ghost" data-a="icdel" data-i="${i}" style="padding:4px 8px">✕</button></div>`).join("")+`</div>
-  <div class="row" style="margin-top:10px"><input id="icn" placeholder="${L("Nuova categoria","New category")}" style="margin:0"><button class="go" data-a="icadd" style="width:auto">Aggiungi</button></div>`;
-  $("valid").innerHTML=h;
-}
-function saveValid(){
-  const ren={},dict={};let n=0;                                   // ren: vecchia parola -> nuova
-  document.querySelectorAll("#valid input[data-wn]").forEach(e=>{const w=e.dataset.wn,nw=e.value.trim().toLowerCase()||w,c=document.querySelector(`#valid select[data-wc="${CSS.escape(w)}"]`).value,s=document.querySelector(`#valid input[data-ws="${CSS.escape(w)}"]`).value.trim()||subsOf(c)[0]||"Varie";
-    dict[nw]=[c,s];ren[w]=nw;});
-  Object.keys(CFG.dict).forEach(w=>{if(!(w in ren))dict[w]=CFG.dict[w];});   // parole nascoste dal filtro di ricerca restano
-  const incRen={};document.querySelectorAll("#valid input[data-ic]").forEach(e=>{const o=CFG.inc[Number(e.dataset.ic)],nw=e.value.trim();if(o&&nw&&nw!==o)incRen[o]=nw;});
-  const fix=d=>{let ch=false;(d.exp||[]).forEach(e=>{const w=e.w.toLowerCase();if(w in ren){const nw=ren[w],[c,s]=dict[nw];if(e.w!==nw||e.c!==c||e.s!==s){e.w=nw;e.c=c;e.s=s;ch=true;n++;}}});
-    (d.inc||[]).forEach(e=>{if(e.c in incRen){e.c=incRen[e.c];ch=true;n++;}});return ch;};
-  const dirty=LS.get(kdirty(),[]);
-  for(const y of years){if(y===S.y)continue;const d=LS.get(kd(y),null);if(d&&fix(d)){LS.set(kd(y),d);if(!dirty.includes(y))dirty.push(y);}}
-  LS.set(kdirty(),dirty);fix(S.data);
-  CFG.rec.forEach(r=>{const w=r.w.toLowerCase();if(w in ren){r.w=ren[w];[r.c,r.s]=dict[ren[w]];}});
-  document.querySelectorAll("#valid input[data-cn]").forEach(e=>{const c=CFG.cats.find(x=>x[0]===e.dataset.cn);if(c&&e.value.trim())c[1]=e.value.trim();});
-  document.querySelectorAll("#valid input[data-cc]").forEach(e=>{const c=CFG.cats.find(x=>x[0]===e.dataset.cc);if(c&&/^#[0-9a-f]{6}$/i.test(e.value))c[2]=e.value;});
-  CFG.dict=dict;CFG.inc=CFG.inc.map(c=>incRen[c]||c);CFG.setupValid=true;cfgSave();save();renderValid();
-  $("vmsg").textContent=L("Salvato. ","Saved. ")+n+L(" voci corrette."," entries updated.");
-}
-function addCat(name){
-  let id=name.toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"cat",b=id,k=2;while(CFG.cats.some(c=>c[0]===id))id=b+"-"+(k++);
-  const used=CFG.cats.map(c=>c[2]),col=PAL.find(c=>!used.includes(c))||PAL[CFG.cats.length%PAL.length];
-  CFG.cats.push([id,name,col]);cfgSave();
-}
-function delCat(id){                                              // parole, spese, ricorrenti e budget passano in "altro"
-  const to="altro";if(id===to)return;
-  Object.keys(CFG.dict).forEach(w=>{if(CFG.dict[w][0]===id)CFG.dict[w]=[to,CFG.dict[w][1]];});
-  CFG.rec.forEach(r=>{if(r.c===id)r.c=to;});
-  const fix=d=>{let ch=false;(d.exp||[]).forEach(e=>{if(e.c===id){e.c=to;ch=true;}});if(d.budget&&d.budget[id]!==undefined){delete d.budget[id];ch=true;}return ch;};
-  const dirty=LS.get(kdirty(),[]);
-  for(const y of years){if(y===S.y)continue;const d=LS.get(kd(y),null);if(d&&fix(d)){LS.set(kd(y),d);if(!dirty.includes(y))dirty.push(y);}}
-  LS.set(kdirty(),dirty);if(fix(S.data))save();
-  CFG.cats=CFG.cats.filter(c=>c[0]!==id);cfgSave();
-}
-
-/* ---------- simulatore PIC e PAC: asset allocation, inflazione, costi, tasse, incertezza ---------- */
-const DEF_SIM=()=>({years:20,infl:2,real:true,ter:0.2,tax:26,bank:0,corr:0.3,mc:false,pic:true,picC:10000,pac:true,pacM:200,pacY:0,pacC:0,bankC:10000,bankM:0,
-  alloc:[["Azioni globali",60,7,15],["Obbligazioni",30,3,5],["Oro",10,4,15]]});                 // [nome, peso %, rendimento atteso %, volatilità %]
-const SIM_PRESETS=[["az100","Azionario 100%",[["Azioni globali",100,7,15]]],["b6040","60 / 40",[["Azioni globali",60,7,15],["Obbligazioni",40,3,5]]],
-  ["gold","50 / 30 / 20 con oro",[["Azioni globali",50,7,15],["Obbligazioni",30,3,5],["Oro",20,4,15]]],["prud","Prudente",[["Azioni globali",30,7,15],["Obbligazioni",50,3,5],["Liquidità",20,2,0.5]]]];
-let SIM=DEF_SIM();
-const ksim=()=>"sim:"+uid;
-function simLoad(){const s=LS.get(ksim(),null);SIM=s?Object.assign(DEF_SIM(),s):DEF_SIM();if(!Array.isArray(SIM.alloc)||!SIM.alloc.length)SIM.alloc=DEF_SIM().alloc;}
-function simSave(){LS.set(ksim(),SIM);}
-const num=(x,d)=>{const v=parseNum(String(x));return v===null||!isFinite(v)?d:v;};
-// generatore di numeri casuali con seme fisso: stessi parametri, stesso grafico
-function rng(seed){let s=seed>>>0||1;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
-function simRun(){
-  const N=Math.max(1,Math.round(num(SIM.years,20)*12)),infl=num(SIM.infl,0)/100,ter=num(SIM.ter,0)/100,bank=num(SIM.bank,0)/100,corr=Math.min(1,Math.max(-0.5,num(SIM.corr,0.3)));
-  const A=SIM.alloc.map(a=>[a[0],Math.max(0,num(a[1],0)),num(a[2],0)/100,Math.max(0,num(a[3],0))/100]),wsum=A.reduce((s,a)=>s+a[1],0)||1,w=A.map(a=>a[1]/wsum);
-  const mu=A.reduce((s,a,i)=>s+w[i]*a[2],0);let v=0;A.forEach((a,i)=>A.forEach((b,j)=>{v+=w[i]*w[j]*a[3]*b[3]*(i===j?1:corr);}));const sig=Math.sqrt(Math.max(0,v));
-  const net=mu-ter,g=Math.pow(1+net,1/12),gb=Math.pow(1+bank,1/12),D=t=>Math.pow(1+infl,t/12);
-  const picC=SIM.pic?Math.max(0,num(SIM.picC,0)):0,pacM=SIM.pac?Math.max(0,num(SIM.pacM,0)):0,pacC=SIM.pac?Math.max(0,num(SIM.pacC,0)):0;
-  const pacN=SIM.pac?(num(SIM.pacY,0)>0?Math.min(N,Math.round(num(SIM.pacY,0)*12)):N):0;
-  const none=!SIM.pic&&!SIM.pac,bC=none?Math.max(0,num(SIM.bankC,0)):0,bM=none?Math.max(0,num(SIM.bankM,0)):0;   // senza PIC né PAC: solo soldi in banca
-  const pic=[picC],pac=[pacC],bnk=[picC+pacC+bC],cPic=picC,cPac=[pacC];           // serie mese per mese (nominali)
-  for(let t=1;t<=N;t++){const c=t<=pacN?pacM:0;pic.push(pic[t-1]*g);pac.push((pac[t-1]+c)*g);bnk.push((bnk[t-1]+c+bM)*gb);cPac.push(cPac[t-1]+c);}
-  const irr=(flows,V)=>{let lo=-0.99,hi=5;for(let i=0;i<80;i++){const r=(lo+hi)/2,m=Math.pow(1+r,1/12);let s=0;flows.forEach((f,t)=>{s+=f*Math.pow(m,N-t);});if(s>V)hi=r;else lo=r;}return (lo+hi)/2;};
-  const tax=num(SIM.tax,0)/100,fin=(V,C,flows)=>{const gain=V-C,tx=Math.max(0,gain)*tax,netV=V-tx;return {V,C,gain,tx:tx,net:netV,real:netV/D(N),irr:C>0?irr(flows,V):0};};
-  const flowsPic=Array(N+1).fill(0);flowsPic[0]=picC;const flowsPac=Array(N+1).fill(0);flowsPac[0]=pacC;for(let t=1;t<=pacN;t++)flowsPac[t-1]+=pacM;
-  const out={N,mu,sig,net,infl,real:(1+net)/(1+infl)-1,wsum,pic,pac,bnk,cPac,D,picC,pacN,pacM,
-    rPic:SIM.pic?fin(pic[N],cPic,flowsPic):null,rPac:SIM.pac?fin(pac[N],cPac[N],flowsPac):null,
-    rBank:none?{C:bC+bM*N,V:bnk[N],real:bnk[N]/D(N)}:null,
-    bPic:SIM.pic?picC*Math.pow(gb,N)/D(N):0,bPac:SIM.pac?(()=>{let b=pacC;for(let t=1;t<=N;t++)b=(b+(t<=pacN?pacM:0))*gb;return b/D(N);})():0};
-  if(SIM.mc&&sig>0){                                                               // Monte Carlo: 200 scenari con rendimenti mensili casuali
-    const K=200,r=rng(12345),sm=sig/Math.sqrt(12),mm=Math.log(1+net)/12-sm*sm/2,P=[],Q=[];let winP=0,winQ=0;
-    for(let k=0;k<K;k++){let a=picC,b=pacC;const pa=[a],pb=[b];
-      for(let t=1;t<=N;t++){const u1=r()||1e-9,u2=r(),z=Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2),f=Math.exp(mm+sm*z),c=t<=pacN?pacM:0;a*=f;b=(b+c)*f;pa.push(a);pb.push(b);}
-      P.push(pa);Q.push(pb);if(a>picC*Math.pow(gb,N))winP++;if(b>out.bPac*D(N))winQ++;}
-    const band=(S)=>{const lo=[],md=[],hi=[];for(let t=0;t<=N;t++){const col=S.map(s=>s[t]).sort((x,y)=>x-y);lo.push(col[Math.floor(K*0.1)]);md.push(col[Math.floor(K*0.5)]);hi.push(col[Math.floor(K*0.9)]);}return {lo,md,hi};};
-    out.mc={pic:SIM.pic?band(P):null,pac:SIM.pac?band(Q):null,winP:winP/K*100,winQ:winQ/K*100};
-  }
-  return out;
-}
-function simChart(R){
-  const N=R.N,real=SIM.real,adj=(v,t)=>real?v/R.D(t):v,W=340,H=240,l=46,r=10,t=14,b=24;
-  const series=[];if(SIM.pic)series.push(R.pic.map(adj));if(SIM.pac)series.push(R.pac.map(adj));series.push(R.bnk.map(adj));
-  let mx=Math.max(1,...series.map(s=>Math.max(...s)));
-  if(R.mc){if(R.mc.pic)mx=Math.max(mx,...R.mc.pic.hi.map(adj));if(R.mc.pac)mx=Math.max(mx,...R.mc.pac.hi.map(adj));}
-  mx*=1.05;const X=i=>l+i*(W-l-r)/N,Y=v=>t+(1-v/mx)*(H-t-b),pts=s=>s.map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).join(" ");
-  let g=[0,1/3,2/3,1].map(k=>`<line class="grid" x1="${l}" x2="${W-r}" y1="${Y(mx*k).toFixed(1)}" y2="${Y(mx*k).toFixed(1)}"/><text class="ax" x="${l-6}" y="${(Y(mx*k)+3.5).toFixed(1)}" text-anchor="end">${kfmt(mx*k)}</text>`).join("");
-  const yrs=N/12,stepY=yrs>30?10:yrs>12?5:yrs>6?2:1;for(let y=0;y<=yrs+1e-9;y+=stepY)g+=`<text class="ax" x="${X(y*12).toFixed(1)}" y="${H-7}" text-anchor="middle">${y}${L("a","y")}</text>`;
-  const band=(B,col)=>B?`<polygon points="${pts(B.hi.map(adj))} ${B.lo.map(adj).map((v,i)=>X(i).toFixed(1)+","+Y(v).toFixed(1)).reverse().join(" ")}" fill="${col}" opacity=".15"/>`:"";
-  if(R.mc){g+=band(R.mc.pic,"var(--acc)")+band(R.mc.pac,"var(--c2)");}
-  g+=`<polyline class="ln" style="stroke:var(--mut);stroke-dasharray:5 4;stroke-width:1.8" points="${pts(R.bnk.map(adj))}"/>`;
-  if(SIM.pic)g+=`<polyline class="ln ln1" points="${pts(R.pic.map(adj))}"/>`;
-  if(SIM.pac)g+=`<polyline class="ln ln2" points="${pts(R.pac.map(adj))}"/>`;
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${L("Simulazione PIC e PAC","Lump sum vs DCA simulation")}">${g}</svg>`;
-}
-function renderSim(){
-  const R=simRun(),real=SIM.real,money=(v,t)=>eur(real?v/R.D(t):v),p1=x=>x.toFixed(1).replace(".",",");
-  const inp=(k,lab,ph,w)=>`<div${w?' style="flex:1"':""}><label for="s_${k}">${lab}</label><input id="s_${k}" data-sim="${k}" inputmode="decimal" placeholder="${ph||""}" value="${esc(String(SIM[k]))}"></div>`;
-  const chk=(k,lab)=>`<label class="chk"><input type="checkbox" data-sim="${k}"${SIM[k]?" checked":""}> ${lab}</label>`;
-  let h=`<div class="top"><button class="ghost" data-a="fin">‹ Asset finanziari</button><span class="mini">${S.y}</span></div><h1 style="font-size:1.5rem;margin:14px 0 0">${L("Simulatore PIC e PAC","Lump sum vs DCA simulator")}</h1>
-  <p class="mini">${L("PIC: investi tutto subito. PAC: versi una cifra ogni mese. La linea tratteggiata sono gli stessi soldi lasciati in banca. Tutto si aggiorna mentre cambi i parametri.","PIC: invest everything at once. PAC: invest a fixed amount every month. The dashed line is the same money left in the bank. Everything updates as you change the parameters.")}</p>`;
-  // grafico e legenda
-  h+=`<div class="card">${simChart(R)}<p class="mini" style="margin:0">${SIM.pic?`<span class="c1">■</span> PIC &nbsp; `:""}${SIM.pac?`<span class="c2">■</span> PAC &nbsp; `:""}<span style="color:var(--mut)">┅</span> ${L("In banca","Bank")}${R.mc?` &nbsp;· ${L("fascia: 10°–90° percentile","band: 10th–90th percentile")}`:""}</p>
-  <p class="mini" style="margin:6px 0 0">${real?L("Valori in potere d'acquisto di oggi (al netto dell'inflazione).","Values in today's purchasing power (net of inflation)."):L("Valori nominali (senza togliere l'inflazione).","Nominal values (inflation not removed).")}</p></div>`;
-  // risultati
-  const card=(nm,res,bank,col,win)=>res?`<div class="card" style="margin-top:12px;border-color:${col}"><div class="row" style="justify-content:space-between;align-items:baseline"><b style="color:${col};font-size:1.1rem">${nm}</b><span class="mini">${L("dopo","after")} ${p1(R.N/12)} ${L("anni","years")}</span></div>
-    <div class="big" style="font-size:1.5rem;margin-top:4px">${eur(real?res.real:res.net)} <small class="mini">${L("netto","net")}</small></div>
-    <div class="hrow"><span>${L("Versato","Invested")}</span><b>${eur(res.C)}</b></div><div class="hrow"><span>${L("Valore finale lordo","Gross final value")}</span><b>${eur(res.V)}</b></div>
-    <div class="hrow"><span>${L("Guadagno","Gain")}</span><b class="${res.gain>=0?"up":"dn"}">${eur(res.gain)}</b></div><div class="hrow"><span>${L("Tasse stimate","Estimated taxes")} (${p1(num(SIM.tax,0))}%)</span><b>${eur(res.tx)}</b></div>
-    <div class="hrow"><span>${L("Netto nominale","Net, nominal")}</span><b>${eur(res.net)}</b></div><div class="hrow"><span>${L("Netto reale (oggi)","Net, today's money")}</span><b>${eur(res.real)}</b></div>
-    <div class="hrow"><span>${L("Rendimento annuo","Annual return")}</span><b>${p1(res.irr*100)}%</b></div><div class="hrow"><span>${L("Stessi soldi in banca (reale)","Same money in bank (real)")}</span><b>${eur(bank)}</b>${pill(res.real,bank)}</div>
-    ${win!==undefined?`<div class="hrow"><span>${L("Scenari in cui batte la banca","Scenarios beating the bank")}</span><b>${p1(win)}%</b></div>`:""}</div>`:"";
-  h+=card("PIC",R.rPic,R.bPic,"var(--acc)",R.mc?R.mc.winP:undefined)+card("PAC",R.rPac,R.bPac,"var(--c2)",R.mc?R.mc.winQ:undefined);
-  if(R.rBank){const B=R.rBank,loss=B.C-B.real;
-    h+=`<div class="card" style="margin-top:12px;border-color:var(--mut)"><div class="row" style="justify-content:space-between;align-items:baseline"><b style="font-size:1.1rem">${L("Solo banca","Bank only")}</b><span class="mini">${L("dopo","after")} ${p1(R.N/12)} ${L("anni","years")}</span></div>
-    <div class="big" style="font-size:1.5rem;margin-top:4px">${eur(real?B.real:B.V)} <small class="mini">${real?L("in euro di oggi","in today's money"):L("nominali","nominal")}</small></div>
-    <div class="hrow"><span>${L("Versato","Deposited")}</span><b>${eur(B.C)}</b></div><div class="hrow"><span>${L("Valore nominale","Nominal value")}</span><b>${eur(B.V)}</b></div><div class="hrow"><span>${L("Potere d'acquisto","Purchasing power")}</span><b>${eur(B.real)}</b></div>
-    <div class="hrow"><span>${loss>=0?L("Perdita di potere d'acquisto","Purchasing power lost"):L("Guadagno reale","Real gain")}</span><b class="${loss>=0?"dn":"up"}">${eur(Math.abs(loss))} <small>(${p1(B.C?Math.abs(loss)/B.C*100:0)}%)</small></b></div>
-    <p class="mini" style="margin:8px 0 0">${L("Con l'inflazione al","With inflation at")} ${p1(R.infl*100)}% ${L("gli stessi soldi comprano ogni anno un po' meno. Riaccendi PIC o PAC per confrontare.","the same money buys a little less every year. Turn PIC or PAC back on to compare.")}</p></div>`;}
-  h+=`<div class="card" style="margin-top:12px"><div class="mini">${L("Portafoglio","Portfolio")}</div><div class="hrow"><span>${L("Rendimento atteso","Expected return")}</span><b>${p1(R.mu*100)}%</b></div><div class="hrow"><span>${L("Costi","Costs")} (TER)</span><b>−${p1(num(SIM.ter,0))}%</b></div><div class="hrow"><span>${L("Rendimento reale netto","Real net return")}</span><b>${p1(R.real*100)}%</b></div><div class="hrow"><span>${L("Volatilità","Volatility")}</span><b>${p1(R.sig*100)}%</b></div>${Math.abs(R.wsum-100)>0.01?`<p class="mini" style="color:var(--err);margin:6px 0 0">${L("I pesi fanno","Weights add up to")} ${p1(R.wsum)}%, ${L("non 100%: li uso in proporzione.","not 100%: I use them in proportion.")}</p>`:""}</div>`;
-  // parametri
-  h+=`<h2 class="gt">${L("Parametri","Parameters")}</h2><div class="card">
-  <div class="row">${inp("years",L("Orizzonte (anni)","Horizon (years)"),"20",1)}${inp("infl",L("Inflazione annua %","Yearly inflation %"),"2",1)}</div>
-  <div class="row">${inp("ter",L("Costi annui % (TER)","Yearly costs % (TER)"),"0,2",1)}${inp("tax",L("Tasse sui guadagni %","Tax on gains %"),"26",1)}</div>
-  <div class="row">${inp("bank",L("Tasso conto in banca %","Bank account rate %"),"0",1)}${inp("corr",L("Correlazione tra classi (0–1)","Correlation between classes (0–1)"),"0,3",1)}</div>
-  ${chk("real",L("Mostra potere d'acquisto di oggi (toglie l'inflazione)","Show today's purchasing power (removes inflation)"))}${chk("mc",L("Mostra incertezza (200 scenari casuali)","Show uncertainty (200 random scenarios)"))}</div>`;
-  if(R.rBank)h+=`<div class="card" style="margin-top:12px;border-color:var(--mut)"><div class="mini" style="margin-bottom:6px">${L("Soldi fermi in banca, senza investire","Money left in the bank, not invested")}</div><div class="row">${inp("bankC",L("Capitale in banca (EUR)","Capital in the bank (EUR)"),"10000",1)}${inp("bankM",L("Versamento mensile in banca (EUR)","Monthly deposit (EUR)"),"0",1)}</div></div>`;
-  h+=`<div class="card" style="margin-top:12px;border-color:var(--acc)">${chk("pic","<b>PIC</b> – "+L("tutto subito","all at once"))}${SIM.pic?inp("picC",L("Capitale iniziale (EUR)","Initial capital (EUR)"),"10000"):""}</div>`;
-  h+=`<div class="card" style="margin-top:12px;border-color:var(--c2)">${chk("pac","<b>PAC</b> – "+L("un po' ogni mese","a bit every month"))}${SIM.pac?`<div class="row">${inp("pacM",L("Versamento mensile (EUR)","Monthly contribution (EUR)"),"200",1)}${inp("pacY",L("Per quanti anni (0 = tutto l'orizzonte)","For how many years (0 = whole horizon)"),"0",1)}</div>${inp("pacC",L("Capitale iniziale del PAC (EUR, facoltativo)","Initial capital of the PAC (EUR, optional)"),"0")}`:""}</div>`;
-  // allocazione
-  h+=`<h2 class="gt">${L("Asset allocation","Asset allocation")}</h2><p class="mini">${L("Per ogni classe: peso, rendimento annuo atteso e volatilità. I valori di partenza sono medie storiche indicative, cambiali come credi.","For each class: weight, expected yearly return and volatility. Defaults are rough historical averages; change them as you like.")}</p>
-  <div class="row" style="margin-bottom:8px"><select id="simpre" style="flex:1;margin:0"><option value="">${L("Carica un modello…","Load a preset…")}</option>${SIM_PRESETS.map(([id,n])=>`<option value="${id}">${n}</option>`).join("")}</select><button class="ghost" data-a="simmine" style="white-space:nowrap">${L("Dal mio portafoglio","From my portfolio")}</button></div>
-  <div class="card ug"><div class="arow ah"><span>${L("Classe","Class")}</span><span>${L("Peso %","Weight %")}</span><span>${L("Rend. %","Return %")}</span><span>${L("Vol. %","Vol. %")}</span><span></span></div>`
-    +SIM.alloc.map((a,i)=>`<div class="arow"><input data-al="${i}:0" value="${esc(a[0])}"><input data-al="${i}:1" inputmode="decimal" value="${esc(String(a[1]))}"><input data-al="${i}:2" inputmode="decimal" value="${esc(String(a[2]))}"><input data-al="${i}:3" inputmode="decimal" value="${esc(String(a[3]))}"><button class="ghost" data-a="saldel" data-i="${i}" style="padding:4px 6px">✕</button></div>`).join("")
-    +`</div><p style="margin-top:8px"><button class="ghost" data-a="saladd">${L("+ Aggiungi classe","+ Add class")}</button></p>`;
-  h+=`<p class="mini">${L("Ipotesi: rendimenti costanti e portafoglio ribilanciato ogni mese; inflazione costante; tasse pagate solo alla fine sul guadagno; nel PAC i versamenti avvengono a inizio mese. È una stima, non una previsione.","Assumptions: constant returns and a monthly rebalanced portfolio; constant inflation; taxes paid only at the end on the gain; PAC contributions at the start of each month. It is an estimate, not a forecast.")}</p>`;
-  $("sim").innerHTML=h;
-}
-function simMine(){                                                               // capitale e pesi presi dagli asset finanziari attuali
-  const rows=FIN().map(([id,n])=>[n,totCatIn(S.m,id,"EUR")]).filter(x=>x[1]>0),T=rows.reduce((a,x)=>a+x[1],0);
-  if(!T){say_sim(L("Non hai ancora asset finanziari con un valore.","You have no financial assets with a value yet."));return;}
-  const def={azioni:[7,15],obbl:[3,5],altro:[4,15]};
-  SIM.alloc=FIN().map(([id,n])=>[n,totCatIn(S.m,id,"EUR")]).filter(x=>x[1]>0).map(([n,v])=>{const k=FIN().find(c=>c[1]===n)[0],d=def[k]||[5,10];return [n,Math.round(v/T*1000)/10,d[0],d[1]];});
-  SIM.pic=true;SIM.picC=Math.round(T);simSave();renderSim();
-}
-const say_sim=m=>{const e=$("sim").querySelector("h1");if(e){const p=document.createElement("p");p.className="mini";p.style.color="var(--err)";p.textContent=m;e.after(p);}};
-
-/* ---------- configurazione guidata: i passi per riempire un account nuovo, con avanzamento automatico ---------- */
-const SETUP=[
- {id:"liq",t:["Conti e contanti","Accounts and cash"],b:["Vai in Liquidità e aggiungi una voce per ogni conto corrente, conto deposito e per i contanti, con il saldo di oggi.","Go to Cash and add one item per bank account, deposit account and for cash, with today's balance."],a:"cat",c:"liq",done:()=>S.data.items.some(i=>i.cat==="liq")},
- {id:"inv",t:["Investimenti","Investments"],b:["In Azioni e ETF, Obbligazioni o Altri investimenti aggiungi i tuoi titoli: cercali per nome o codice e scrivi quante quote possiedi. Per fondi pensione o strumenti senza prezzo usa Altro e scrivi il valore.","In Stocks and ETFs, Bonds or Other investments add your securities: search them by name or ticker and type how many units you own. For pension funds or unpriced products use Other and type the value."],a:"cat",c:"azioni",done:()=>S.data.items.some(i=>TKCAT.includes(i.cat))},
- {id:"beni",t:["Beni di valore","Valuables"],b:["Oro, auto, collezioni: in Beni di valore, con una stima del valore. Se non ne hai, salta questo passo.","Gold, car, collections: in Valuables, with an estimated value. If you have none, skip this step."],a:"cat",c:"beni",opt:true,done:()=>S.data.items.some(i=>i.cat==="beni")},
- {id:"valid",t:["Categorie e parole delle spese","Expense categories and words"],b:["In Parole e categorie elimina le parole di esempio, sistema le categorie con i loro colori e aggiungi le parole che usi davvero (supermercato, benzina…). Le parole nuove si possono aggiungere anche al volo mentre inserisci una spesa.","In Words and categories delete the sample words, arrange the categories with their colours and add the words you really use (grocery, fuel…). New words can also be added on the fly while entering an expense."],a:"valid",done:()=>!!CFG.setupValid},
- {id:"inc",t:["Entrate","Income"],b:["In Entrate inserisci lo stipendio di questo mese. Le categorie (Stipendio, Extra…) si cambiano in Parole e categorie.","In Income add this month's salary. Categories (Salary, Extra…) are changed in Words and categories."],a:"inc",done:()=>INC().length>0},
- {id:"exp",t:["Prima spesa","First expense"],b:["In Inserisci spesa registra una spesa di oggi: così vedi come funzionano parola, categoria e lista.","In Add expense record an expense from today: you'll see how word, category and list work."],a:"exp",done:()=>EXP().length>0},
- {id:"key",t:["Prezzi automatici","Automatic prices"],b:["Crea una chiave gratuita su twelvedata.com e incollala in Impostazioni → Prezzi: i titoli si aggiorneranno da soli. Senza titoli puoi saltare.","Create a free key on twelvedata.com and paste it in Settings → Prices: securities will update by themselves. With no securities you can skip."],a:"set",opt:true,done:()=>!!LS.get("tdkey","")},
- {id:"bk",t:["Backup e promemoria","Backup and reminder"],b:["In Impostazioni scarica un primo backup con Esporta dati e aggiungi al calendario il promemoria mensile.","In Settings download a first backup with Export data and add the monthly reminder to your calendar."],a:"set",done:()=>!!LS.get("exported:"+uid,0)}];
-const setupSkip=()=>LS.get("setupskip:"+uid,[]);
-const setupState=()=>{const sk=setupSkip();const st=SETUP.map(x=>({...x,ok:x.done()||sk.includes(x.id)}));return {st,n:st.filter(x=>x.ok).length,tot:st.length};};
-function renderSetup(){
-  const {st,n,tot}=setupState();
-  let h=`<div class="top"><button class="ghost" data-a="home">‹ Home</button><span class="mini">${S.y}</span></div><h1 style="font-size:1.5rem;margin:14px 0 0">${L("Configurazione guidata","Guided setup")}</h1>
-  <p class="mini">${L("I passi per riempire l'app con i tuoi dati, nell'ordine giusto. Si spuntano da soli quando li completi; quelli facoltativi puoi saltarli.","The steps to fill the app with your data, in the right order. They tick themselves when you complete them; optional ones can be skipped.")}</p>
-  <div class="card"><div class="row" style="justify-content:space-between"><b>${n} / ${tot}</b><span class="mini">${n===tot?L("Tutto fatto","All done"):L("passi completati","steps completed")}</span></div><div class="bar" style="margin-top:8px"><i style="width:${n/tot*100}%"></i></div>
-  ${n<tot?`<div class="row" style="margin-top:14px"><button class="ghost" data-a="acct" style="flex:1">${L("Ho già un file: importa","I have a file: import")}</button><button class="ghost" data-a="setupall">${L("Salta tutto","Skip all")}</button></div>`:""}</div>`;
-  h+=st.map((x,i)=>`<div class="card" style="margin-top:10px${x.ok?";opacity:.75":""}"><div class="row" style="justify-content:space-between;align-items:baseline"><b>${x.ok?"✓ ":""}${i+1}. ${T(x.t)}</b>${x.opt?`<span class="mini">${L("facoltativo","optional")}</span>`:""}</div>
-    <p class="mini" style="margin:6px 0 10px">${T(x.b)}</p><div class="row"><button class="${x.ok?"ghost":"go"}" data-a="${x.a}"${x.c?` data-c="${x.c}"`:""} style="width:auto;padding:10px 16px">${x.ok?L("Riapri","Open again"):L("Vai","Go")}</button>${!x.ok?`<button class="ghost" data-a="setupskip" data-id="${x.id}">${L("Salta","Skip")}</button>`:""}</div></div>`).join("");
-  $("setup").innerHTML=h;
-}
-function setupNote(){                                             // riquadro in home finché la configurazione non è completa
-  if(LS.get("setuphide:"+uid,0))return "";const {n,tot}=setupState();if(n===tot)return "";
-  return `<div class="card note" style="border-left-color:var(--acc)"><b>${L("Configurazione guidata","Guided setup")}: ${n} / ${tot}</b><div class="bar" style="margin:8px 0 10px"><i style="width:${n/tot*100}%"></i></div><div class="row"><button class="go" data-a="setup" style="width:auto;padding:10px 16px">${L("Continua","Continue")}</button><button class="ghost" data-a="setuphide">${L("Nascondi","Hide")}</button></div></div>`;
-}
-
-/* ---------- tutorial: lampadina in ogni pagina, guida completa, benvenuto ---------- */
-// Ogni voce: titolo [it,en] e sezioni {h: titolo [it,en], b: testo [it,en]}
-const HELP={
- home:{t:["Home","Home"],s:[
-  {h:["Cosa vedi","What you see"],b:["Il patrimonio netto del mese scelto, con la variazione rispetto al mese prima (verde se sale, rossa se scende). Sotto, le cinque categorie con il loro totale e il pulsante Asset finanziari e ribilancia. Se hai inserito versamenti, una riga separa quanto hai versato da quanto ha fatto il mercato.","Your net worth for the chosen month, with the change versus the previous month (green up, red down). Below, the five categories with their totals and the Financial assets and rebalance button. If you entered deposits, a line separates what you deposited from what the market did."]},
-  {h:["Cosa puoi fare","What you can do"],b:["Cambia mese con le frecce e valuta con EUR/USD. Tocca una categoria per vedere e modificare le sue voci. In fondo trovi Aggiorna mese, Aggiorna prezzi ed Esci. Quando un mese finisce compare un riquadro che ti chiede di confermarlo.","Change month with the arrows and currency with EUR/USD. Tap a category to see and edit its items. At the bottom you find Update month, Update prices and Log out. When a month ends, a box asks you to confirm it."]},
-  {h:["Consiglio","Tip"],b:["La home è solo di consultazione: i numeri si cambiano dentro le categorie o, più velocemente, in Aggiorna mese.","The home is read-only: numbers are changed inside the categories or, faster, in Update month."]}]},
- cat:{t:["Categoria","Category"],s:[
-  {h:["Cosa vedi","What you see"],b:["Il totale della categoria nel mese scelto e l'elenco delle voci (per esempio un conto o un oggetto di valore), ciascuna con la sua valuta e il valore del mese. Sotto ogni voce due etichette: variazione rispetto al mese prima e da inizio anno.","The category total for the chosen month and the list of items (for example an account or a valuable), each with its currency and the month's value. Under each item, two labels: change versus the previous month and since the start of the year."]},
-  {h:["Cosa puoi fare","What you can do"],b:["+ Aggiungi voce crea una voce nuova. Tocca una voce per cambiarne nome, valuta o valore, oppure per eliminarla (il tasto chiede un secondo tocco). I valori negativi sono ammessi, per esempio una carta di credito.","+ Add item creates a new item. Tap an item to change its name, currency or value, or to delete it (the button asks for a second tap). Negative values are allowed, for example a credit card."]},
-  {h:["Da sapere","Good to know"],b:["Se in un mese non inserisci il valore, la voce mantiene l'ultimo valore inserito: così non devi riscrivere ciò che non cambia.","If you don't enter a value in a month, the item keeps the last value entered: you never retype what hasn't changed."]}]},
- catfin:{t:["Categoria finanziaria","Financial category"],s:[
-  {h:["Cosa vedi","What you see"],b:["Il totale della categoria e le voci: titoli con numero di quote (il valore è quote × prezzo) oppure voci con il valore scritto a mano. Sotto ogni voce la variazione rispetto al mese prima e da inizio anno; in alto la riga del cambio EUR/USD e, se hai inserito versamenti, la riga versato/mercato.","The category total and its items: securities with a number of units (value = units × price) or items with a hand-written value. Under each item the change versus the previous month and since the start of the year; at the top the EUR/USD line and, if you entered deposits, the deposited/market line."]},
-  {h:["Aggiungere un titolo","Adding a security"],b:["In + Aggiungi voce scegli il titolo dal menu, oppure cercalo per nome o codice con Cerca (serve la chiave Twelve Data): nome, valuta e prezzo li imposta l'app, tu scrivi solo le quote. Con Personalizzato inserisci a mano anche il prezzo di una quota. Con Altro inserisci il valore totale.","In + Add item pick the security from the menu, or search it by name or ticker with Search (needs the Twelve Data key): the app sets name, currency and price, you only type the units. With Custom you also type the unit price yourself. With Other you enter the total value."]},
-  {h:["Prezzi","Prices"],b:["Nel mese in corso il valore segue il prezzo attuale (Aggiorna prezzi in home). I mesi passati restano fissi come una fotografia: cambiano solo se li modifichi tu.","In the current month the value follows the live price (Update prices on the home). Past months stay fixed like a snapshot: they change only if you edit them."]}]},
- upd:{t:["Aggiorna mese","Update month"],s:[
-  {h:["A cosa serve","What it is for"],b:["Inserire i valori di un mese in pochi secondi: tutte le voci in una sola schermata, raggruppate per categoria. Scegli il mese con le frecce.","Enter a month's values in seconds: all items on one screen, grouped by category. Pick the month with the arrows."]},
-  {h:["Come si usa","How to use it"],b:["Cambia solo i valori che sono cambiati: le voci che non tocchi restano uguali al mese prima. Per i titoli, nel mese in corso scrivi le quote; nei mesi passati il valore. Nella sezione Versamenti e prelievi scrivi i soldi nuovi messi negli investimenti (+) o tolti (−): servono a distinguere il tuo risparmio dal rendimento del mercato.","Change only what changed: untouched items stay equal to the previous month. For securities, type units in the current month and the value in past months. In Deposits and withdrawals, write the new money put into (+) or taken out of (−) investments: it separates your savings from market performance."]},
-  {h:["Conferma del mese","Confirming a month"],b:["Nei mesi già finiti il pulsante si chiama Conferma e salva: fissa il mese e fa sparire il promemoria in home. Dopo la conferma compare Scarica backup: usalo.","In past months the button reads Confirm and save: it fixes the month and removes the reminder on the home. After confirming, Download backup appears: use it."]}]},
- fin:{t:["Asset finanziari","Financial assets"],s:[
-  {h:["Cosa vedi","What you see"],b:["Solo la parte investita: azioni, obbligazioni e altri investimenti, con importo, peso percentuale sul portafoglio e barra. Sotto, se li hai inseriti, versato e mercato del mese.","Only the invested part: stocks, bonds and other investments, with amount, weight on the portfolio and bar. Below, if entered, this month's deposits and market effect."]},
-  {h:["Cosa puoi fare","What you can do"],b:["Ribilancia ti dice quanto vendere e comprare per tornare all'allocazione che vuoi. Simulatore PIC e PAC stima come cresce un'allocazione nel tempo, contro i soldi fermi in banca.","Rebalance tells you how much to sell and buy to get back to the allocation you want. The PIC and PAC simulator estimates how an allocation grows over time, versus money left in the bank."]}]},
- reb:{t:["Ribilancia","Rebalance"],s:[
-  {h:["Tre modi","Three modes"],b:["In percentuale: scrivi il peso obiettivo di ogni categoria (devono fare 100). In importo: scrivi il valore che vuoi per ciascuna. Solo acquisti: scrivi quanto vuoi investire di nuovo e l'app lo distribuisce dove manca, senza vendere e senza tasse.","By percentage: write each category's target weight (they must add up to 100). By amount: write the value you want for each. Buy only: write how much new money you'll invest and the app spreads it where it's missing, with no selling and no taxes."]},
-  {h:["Risultati","Results"],b:["Accanto a ogni categoria: Vendi in rosso o Compra in verde, con la ripartizione per singolo titolo in proporzione al peso e le quote approssimative. La tolleranza ignora scostamenti piccoli. Se hai impostato le tasse, vedi quelle stimate sulle vendite.","Next to each category: Sell in red or Buy in green, with the split by security in proportion to weight and approximate units. The tolerance ignores small deviations. If you set taxes, you see those estimated on sales."]},
-  {h:["Da sapere","Good to know"],b:["Gli importi sono nella valuta scelta in home. Gli obiettivi restano salvati per l'anno e passano all'anno nuovo.","Amounts are in the currency chosen on the home. Targets are saved for the year and carry over to the new year."]}]},
- tax:{t:["Tasse sui profitti","Taxes on gains"],s:[
-  {h:["A cosa serve","What it is for"],b:["Stimare le tasse che pagheresti vendendo. Scrivi l'aliquota (in Italia il 26%) e, per ogni categoria, il profitto maturato finora (valore attuale meno quanto hai investito).","Estimate the taxes you'd pay when selling. Write the rate (26% in Italy) and, for each category, the gain so far (current value minus what you invested)."]},
-  {h:["Da sapere","Good to know"],b:["È una stima: assume che il profitto sia distribuito uniformemente nella categoria. Se non conosci i numeri, Continua senza tasse.","It's an estimate: it assumes the gain is spread evenly across the category. If you don't know the numbers, Continue without taxes."]}]},
- sim:{t:["Simulatore PIC e PAC","Lump sum vs DCA simulator"],s:[
-  {h:["Cosa confronta","What it compares"],b:["PIC: investi tutto subito. PAC: versi una cifra ogni mese. La linea tratteggiata sono gli stessi soldi lasciati in banca, erosi dall'inflazione che scegli. Puoi spegnere PIC o PAC; con entrambi spenti vedi solo lo scenario banca.","PIC: invest everything at once. PAC: invest a fixed amount every month. The dashed line is the same money left in the bank, eroded by the inflation you choose. You can switch PIC or PAC off; with both off you only see the bank scenario."]},
-  {h:["Parametri","Parameters"],b:["Orizzonte, inflazione, costi annui, tasse sui guadagni, tasso del conto, correlazione tra le classi. L'asset allocation in basso: per ogni classe peso, rendimento atteso e volatilità. Carica un modello o parti dal tuo portafoglio reale.","Horizon, inflation, yearly costs, tax on gains, bank rate, correlation between classes. The asset allocation below: weight, expected return and volatility for each class. Load a preset or start from your real portfolio."]},
-  {h:["Incertezza","Uncertainty"],b:["Attiva Mostra incertezza per vedere 200 scenari casuali: la fascia colorata racchiude il 10°–90° percentile e i risultati dicono in quanti scenari batti la banca. È una stima, non una previsione.","Turn on Show uncertainty to see 200 random scenarios: the shaded band covers the 10th–90th percentile and the results tell in how many scenarios you beat the bank. It's an estimate, not a forecast."]}]},
- acct:{t:["Account","Account"],s:[
-  {h:["Cosa trovi","What you find"],b:["Le informazioni del tuo account: email, tipo (demo o online), da quando lo usi, quanti anni e dati contiene, lo stato della sincronizzazione e la versione dell'app.","Your account information: email, type (demo or online), since when you use it, how many years and data it holds, sync status and app version."]},
-  {h:["Cosa puoi fare","What you can do"],b:["Esporta dati crea il file con tutto (anni, voci, spese, impostazioni), che Importa dati rilegge anche su un altro account. Parole e categorie gestisce le parole delle spese, le categorie con i colori e le categorie delle entrate. Cambia password (solo online), le note legali e il pulsante Esci.","Export data creates the file with everything (years, items, expenses, settings), which Import data reads back even on another account. Words and categories manages expense words, categories with colours and income categories. Change password (online only), legal notes and the Log out button."]}]},
- set:{t:["Impostazioni","Settings"],s:[
-  {h:["Cosa trovi","What you find"],b:["Anno su cui lavori e Cambia anno. Lingua, con le bandiere. Prezzi: la chiave gratuita di Twelve Data. Il promemoria da mettere nel calendario. Configurazione guidata, guida completa e benvenuto. In modalità demo, il pulsante per svuotare i dati di prova. Esportazione, importazione, parole e categorie e password sono nella pagina Account.","The year you're working on and Change year. Language, with flags. Prices: the free Twelve Data key. The reminder to add to your calendar. Guided setup, full guide and welcome. In demo mode, the button to clear demo data. Export, import, words and categories and password are on the Account page."]},
-  {h:["Consiglio","Tip"],b:["Esporta i dati a ogni fine mese dalla pagina Account: finché l'app lavora solo sul tuo dispositivo, il file è il tuo unico backup.","Export your data at every month end from the Account page: as long as the app works only on your device, that file is your only backup."]}]},
- hist:{t:["Storico","History"],s:[
-  {h:["Cosa vedi","What you see"],b:["Il patrimonio netto mese per mese come grafico: una linea in euro e una in dollari, convertita col cambio salvato per ciascun mese. Sopra, l'ultimo mese e la variazione da inizio anno; sotto, la tabella mese per mese.","Your net worth month by month as a chart: one line in euros, one in dollars converted with each month's saved rate. Above, the latest month and the change since the start of the year; below, the month-by-month table."]},
-  {h:["Versato e mercato","Deposited and market"],b:["Se inserisci i versamenti in Aggiorna mese, qui vedi quanto della crescita degli asset finanziari è tuo risparmio e quanto è mercato.","If you enter deposits in Update month, here you see how much of the growth of your financial assets is your savings and how much is market."]}]},
- exp:{t:["Inserisci spesa","Add expense"],s:[
-  {h:["Come si inserisce","How to add"],b:["Scrivi cosa hai comprato: l'app suggerisce le parole conosciute e compila da sola categoria e sottocategoria. Se la parola è nuova, scegli tu categoria e sottocategoria una volta sola: la ricorderà. Poi importo, data (oggi) e nota.","Write what you bought: the app suggests known words and fills category and subcategory for you. If the word is new, pick category and subcategory once: it will remember. Then amount, date (today) and note."]},
-  {h:["Ricorrenti","Recurring"],b:["Spunta Ricorrente per le spese fisse (affitto, abbonamenti): ogni mese vengono inserite da sole nel giorno scelto, segnate con ↻. In fondo l'elenco delle ricorrenti, con la ✕ per toglierle.","Tick Recurring for fixed expenses (rent, subscriptions): every month they're added automatically on the chosen day, marked ↻. At the bottom the list of recurring ones, with ✕ to remove them."]},
-  {h:["Lista","List"],b:["Cerca per parola, nota o categoria e filtra per mese. Tocca una spesa per modificarla; per eliminarla il tasto chiede un secondo tocco.","Search by word, note or category and filter by month. Tap an expense to edit it; to delete, the button asks for a second tap."]}]},
- trend:{t:["Andamento spese","Spending trend"],s:[
-  {h:["Cosa vedi","What you see"],b:["Il totale speso nel mese con due confronti: rispetto al mese prima e alla media annua (qui il rosso significa che hai speso di più). Poi una riga per categoria; se hai un budget vedi quanto ne hai usato.","Total spent in the month with two comparisons: versus the previous month and versus the yearly average (here red means you spent more). Then one row per category; if you have a budget you see how much of it you used."]},
-  {h:["Cosa puoi fare","What you can do"],b:["Tocca una categoria per vedere le sottocategorie. Confronta mesi: scegli i mesi che vuoi, anche tutti, e filtra per categoria per vedere come è andata mese per mese.","Tap a category to see its subcategories. Compare months: pick as many months as you like, even all, and filter by category to see month by month."]}]},
- graph:{t:["Grafico spese","Expense chart"],s:[
-  {h:["Come si legge","How to read it"],b:["Ogni barra è un mese, ogni colore una categoria; il numero sopra è il totale. Tocca una barra per il dettaglio di quel mese; tocca una categoria nella legenda per nasconderla. I colori si cambiano in Impostazioni → Parole e categorie.","Each bar is a month, each colour a category; the number above is the total. Tap a bar for that month's detail; tap a category in the legend to hide it. Colours are changed in Settings → Words and categories."]}]},
- inc:{t:["Inserisci entrata","Add income"],s:[
-  {h:["Come funziona","How it works"],b:["Scegli la categoria (Stipendio, Extra o le tue), importo, data e nota. In alto il totale del mese con il confronto rispetto al mese prima e alla media annua; sotto le entrate del mese: tocca per modificare.","Pick the category (Salary, Extra or your own), amount, date and note. At the top the month's total compared with the previous month and the yearly average; below, the month's entries: tap to edit."]},
-  {h:["Da sapere","Good to know"],b:["Le categorie delle entrate si aggiungono e rinominano in Impostazioni → Parole e categorie.","Income categories are added and renamed in Settings → Words and categories."]}]},
- igraph:{t:["Grafico entrate","Income chart"],s:[
-  {h:["Come si legge","How to read it"],b:["Una barra per mese divisa per categoria, con la linea tratteggiata della media annua. Tocca una barra per il dettaglio, una categoria nella legenda per nasconderla.","One bar per month split by category, with the dashed yearly-average line. Tap a bar for the detail, a category in the legend to hide it."]}]},
- sav:{t:["Risparmio","Savings"],s:[
-  {h:["Cosa vedi","What you see"],b:["Entrate meno uscite del mese, la percentuale di risparmio e il confronto con il mese prima e con la media annua. Poi i totali dell'anno.","Income minus expenses for the month, the savings rate and the comparison with the previous month and the yearly average. Then the year's totals."]},
-  {h:["Indipendenza finanziaria","Financial independence"],b:["L'obiettivo è il capitale che, prelevandone ogni anno la percentuale scelta (3,5% di default), copre le tue spese annue medie. La barra dice a che punto sei e, con il tuo risparmio mensile medio e il rendimento reale del simulatore, tra quanti anni ci arrivi.","The target is the capital that, withdrawing the chosen percentage each year (3.5% by default), covers your average yearly expenses. The bar shows where you are and, with your average monthly savings and the simulator's real return, in how many years you get there."]},
-  {h:["Mesi coperti","Months covered"],b:["Quanti mesi di spese medie copre la tua liquidità: è il tuo margine di sicurezza.","How many months of average expenses your cash covers: your safety margin."]}]},
- goals:{t:["Obiettivi","Goals"],s:[
-  {h:["Obiettivi personali","Personal goals"],b:["Aggiungi un obiettivo (palestra, dieta, un progetto) e a fine mese tocca la sua casella: verde raggiunto, giallo così così, rosso no. Tocca ancora per cambiare. La ✕ elimina l'obiettivo.","Add a goal (gym, diet, a project) and at month end tap its box: green done, yellow so-so, red no. Tap again to change. ✕ deletes the goal."]},
-  {h:["Crescita del patrimonio","Net worth growth"],b:["Scrivi quanto vuoi che cresca il patrimonio nell'anno, in percentuale o in euro. La barra confronta il patrimonio del primo mese con quello dell'ultimo (versamenti compresi): il segno indica il 100% e, se vai oltre, la barra continua e il testo dice di quanto.","Write how much you want your net worth to grow this year, in percent or euros. The bar compares the first month's net worth with the latest (deposits included): the tick marks 100% and, if you go beyond, the bar continues and the text says by how much."]},
-  {h:["Budget","Budgets"],b:["Per ogni categoria di spesa scrivi quanto vuoi spendere al massimo ogni mese: la barra si riempie e diventa rossa se sfori. Il budget compare anche in Andamento spese.","For each expense category write the most you want to spend each month: the bar fills and turns red if you go over. Budgets also appear in Spending trend."]}]},
- hof:{t:["Hall of fame","Hall of fame"],s:[
-  {h:["Cosa vedi","What you see"],b:["I record tra tutti gli anni salvati su questo dispositivo: massimo storico del patrimonio, mese migliore e peggiore, anno migliore; poi mese con più entrate, meno uscite, più uscite, miglior risparmio, e una tabella anno per anno.","Records across all years saved on this device: all-time high net worth, best and worst month, best year; then the month with the highest income, lowest spending, highest spending, best savings, and a year-by-year table."]}]},
- valid:{t:["Parole e categorie","Words and categories"],s:[
-  {h:["Parole","Words"],b:["Ogni parola che usi per le spese ha categoria e sottocategoria: qui le correggi. Se rinomini una parola con il nome di un'altra, le unisci (supermarket → supermercato) e le spese già inserite si aggiornano. Premi Salva modifiche. Con Elimina le parole di esempio togli quelle di partenza e tieni solo le tue.","Every word you use for expenses has a category and subcategory: fix them here. Renaming a word to another word's name merges them (supermarket → supermercato) and existing expenses update. Tap Save changes. Delete the sample words removes the starter ones and keeps only yours."]},
-  {h:["Categorie","Categories"],b:["Aggiungi categorie di spesa, cambia nome e colore (il quadratino), eliminale: parole e spese passano in Altro. Più sotto le categorie delle entrate.","Add expense categories, change name and colour (the little square), delete them: words and expenses move to Other. Further down, income categories."]}]},
- setup:{t:["Configurazione guidata","Guided setup"],s:[
-  {h:["A cosa serve","What it is for"],b:["Elenca, nell'ordine giusto, i passi per riempire un account nuovo: conti, investimenti, beni, parole e categorie delle spese, entrate, prima spesa, chiave prezzi, backup. Ogni passo ha il pulsante Vai che ti porta nel posto giusto.","Lists, in the right order, the steps to fill a new account: accounts, investments, valuables, expense words and categories, income, first expense, price key, backup. Each step has a Go button that takes you to the right place."]},
-  {h:["Avanzamento","Progress"],b:["I passi si spuntano da soli quando li completi; quelli facoltativi si possono saltare. Finché non è completa, in home c'è un riquadro con l'avanzamento, che puoi nascondere.","Steps tick themselves when completed; optional ones can be skipped. Until it's complete, the home shows a progress box, which you can hide."]}]},
- pick:{t:["Scelta dell'anno","Choosing the year"],s:[
-  {h:["Come funziona","How it works"],b:["Ogni anno ha i suoi dati. Tocca un anno per aprirlo: l'app lo ricorda e alle prossime aperture va diretta lì. Il 1° gennaio l'anno nuovo nasce da solo, con le voci dell'anno prima e il valore di dicembre come partenza.","Each year has its own data. Tap a year to open it: the app remembers it and opens there next time. On 1 January the new year is created automatically, with last year's items and December's value as the starting point."]},
-  {h:["Da sapere","Good to know"],b:["Per tornare qui usa Cambia anno in Impostazioni. Con + Aggiungi anno puoi creare anche anni passati.","To come back here use Change year in Settings. With + Add year you can also create past years."]}]}
-};
-const HELP_ORDER=["home","cat","catfin","upd","fin","reb","tax","sim","hist","exp","trend","graph","inc","igraph","sav","goals","hof","pick","acct","set","valid","setup"];
-const T=a=>L(a[0],a[1]);
-const BULB='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 18h5M10.5 21h3M12 3a6 6 0 0 0-4.1 10.4c.7.6 1.1 1.4 1.1 2.6h6c0-1.2.4-2 1.1-2.6A6 6 0 0 0 12 3z"/></svg>';
-const helpKey=()=>S.scr==="cat"?(TKCAT.includes(S.cat)?"catfin":"cat"):(HELP[S.scr]?S.scr:"home");
-const helpHtml=k=>{const H=HELP[k];return H.s.map(x=>`<h3>${T(x.h)}</h3><p>${T(x.b)}</p>`).join("");};
-function openHelp(k){
-  const H=HELP[k]||HELP.home,d=document.createElement("div");d.className="ov help";
-  d.innerHTML=`<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><b style="font-size:1.1rem">${T(H.t)}</b><button class="ghost" data-x="close" style="padding:4px 10px">✕</button></div>${helpHtml(k)}
-  <p style="margin:14px 0 0"><button class="ghost" data-x="guide" style="width:100%">${L("Apri la guida completa","Open the full guide")}</button></p></div>`;
-  document.querySelector("main").appendChild(d);
-  d.addEventListener("click",e=>{const x=e.target.closest("[data-x]");if(x&&x.dataset.x==="guide"){d.remove();renderGuide();screen("guide");}else if(x||e.target===d)d.remove();});
-}
-function renderGuide(){
-  let h=`<div class="top"><button class="ghost" data-a="set">‹ Impostazioni</button></div><h1 style="font-size:1.5rem;margin:14px 0 0">${L("Guida","Guide")}</h1>
-  <p class="mini">${L("Tutto quello che l'app sa fare, pagina per pagina. In ogni pagina trovi la stessa spiegazione toccando la lampadina in alto.","Everything the app does, page by page. On every page you find the same explanation by tapping the bulb at the top.")}</p>
-  <p><button class="ghost" data-a="welcome" style="width:100%">${L("Rivedi il benvenuto","See the welcome again")}</button></p>`;
-  h+=HELP_ORDER.map(k=>{const H=HELP[k],open=S.gopen===k;return `<button class="catbtn" data-a="gopen" data-k="${k}" aria-expanded="${open}" style="width:100%"><span>${T(H.t)}</span><span class="r">${open?"▴":"▾"}</span></button>${open?`<div class="card help" style="margin:-6px 0 10px">${helpHtml(k)}</div>`:""}`;}).join("");
-  $("guide").innerHTML=h;
-}
-// benvenuto al primo accesso: tre passi, poi non compare più
-const WELCOME=[
- {t:["Benvenuto in Mozzi","Welcome to Mozzi"],b:["Qui tieni traccia di quanto possiedi, di quanto spendi e di quanto risparmi, senza fogli di calcolo. Tutto parte dalla home: il patrimonio netto del mese e le cinque categorie (azioni, obbligazioni, altri investimenti, liquidità, beni di valore).","Here you track what you own, what you spend and what you save, without spreadsheets. Everything starts from the home: the month's net worth and the five categories (stocks, bonds, other investments, cash, valuables)."]},
- {t:["1. Aggiungi le tue voci","1. Add your items"],b:["Tocca una categoria e usa + Aggiungi voce: un conto, un titolo con il numero di quote, un oggetto di valore. Dal Menu ▾ in alto raggiungi Spese, Entrate, Risparmio e tutto il resto. In modalità demo trovi dati inventati per provare.","Tap a category and use + Add item: an account, a security with its units, a valuable. From the Menu ▾ at the top you reach Expenses, Income, Savings and everything else. In demo mode you find invented data to try things out."]},
- {t:["2. Ogni mese, due minuti","2. Two minutes every month"],b:["A fine mese apri Aggiorna mese (in fondo alla home), cambia solo ciò che è cambiato e premi Conferma e salva. L'app ti ricorda il mese da confermare e ti offre il backup.","At month end open Update month (at the bottom of the home), change only what changed and tap Confirm and save. The app reminds you of the month to confirm and offers a backup."]},
- {t:["3. Se non sai cosa fa qualcosa","3. If you don't know what something does"],b:["In ogni pagina c'è una lampadina in alto: spiega quello che vedi e cosa puoi fare. In Impostazioni trovi la guida completa. Premendo Inizia parte la configurazione guidata, che ti dice dove mettere ogni cosa.","Every page has a bulb at the top: it explains what you see and what you can do. In Settings you find the full guide. Tapping Start opens the guided setup, which tells you where to put everything."]}];
-function showWelcome(force){
-  if(!force&&LS.get("welcome:"+uid,0))return;let i=0;const d=document.createElement("div");d.className="ov help";
-  const paint=()=>{const W=WELCOME[i],last=i===WELCOME.length-1;d.innerHTML=`<div class="card"><div class="mini">${WELCOME.map((x,k)=>`<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;background:${k===i?"var(--acc)":"var(--line)"}"></span>`).join("")}</div>
-    <h2 style="margin:10px 0 6px;font-size:1.2rem">${T(W.t)}</h2><p style="margin:0 0 14px">${T(W.b)}</p>
-    <div class="row">${i>0?`<button class="ghost" data-x="prev">${L("Indietro","Back")}</button>`:`<button class="ghost" data-x="skip">${L("Salta","Skip")}</button>`}<button class="go" data-x="next">${last?L("Inizia","Start"):L("Avanti","Next")}</button></div>
-    ${last?`<p style="margin:10px 0 0"><button class="ghost" data-x="imp" style="width:100%">${L("Ho già un file esportato: importa","I already have an export: import")}</button></p>`:""}</div>`;};
-  d.addEventListener("click",e=>{const x=e.target.closest("[data-x]");if(!x)return;const a=x.dataset.x;
-    if(a==="imp"){LS.set("welcome:"+uid,1);LS.set("setuphide:"+uid,1);d.remove();renderAcct();screen("acct");return;}
-    if(a==="prev")i--;else if(a==="skip"||(a==="next"&&i===WELCOME.length-1)){LS.set("welcome:"+uid,1);d.remove();if(a==="next"){renderSetup();screen("setup");}return;}else i++;paint();});
-  paint();document.querySelector("main").appendChild(d);
-}
-
-const draw=()=>({cat:renderCat,upd:renderUpd,fin:renderFin,reb:renderReb,tax:renderTax,set:renderSet,hist:renderHist,exp:renderExp,trend:renderTrend,inc:renderInc,sav:renderSav,goals:renderGoals,hof:renderHof,valid:renderValid,graph:renderGraph,igraph:renderIGraph,sim:renderSim,guide:renderGuide,setup:renderSetup,acct:renderAcct}[S.scr]||renderHome)();
-document.addEventListener("change",e=>{const t=e.target,R=S.data.reb;
-  if(t.id==="et")syncForm();
-  if(t.dataset.r){R[rk(R)][t.dataset.r]=t.value.trim();save();}
-  if(t.id==="racq"){R.acq=t.value.trim();save();}
-  if(t.id==="rtol"){R.tol=t.value.trim();save();}
-  if(t.id==="imp"){importFile(t.files[0]);t.value="";}
-  if(t.id==="ec2"){const dl=$("subs");if(dl)dl.innerHTML=subsOf(t.value).map(x=>`<option value="${esc(x)}">`).join("");}
-  if(t.id==="cmpc"){S.cmpC=t.value;renderTrend();}
-  if(t.id==="xm"){S.xm=Number(t.value);renderExp();}
-  if(t.id==="firer"){const x=parseNum(t.value);if(x>0)LS.set("fire:"+uid,x);renderSav();}
-  if(t.id==="ngv"){const x=parseNum(t.value);S.data.ngoal={...(S.data.ngoal||{mode:"pct"}),v:x!==null&&isFinite(x)&&x>0?x:""};save();renderGoals();}
-  if(t.dataset.sim){SIM[t.dataset.sim]=t.type==="checkbox"?t.checked:t.value.trim();simSave();renderSim();}
-  if(t.dataset.al){const [i,f]=t.dataset.al.split(":").map(Number);if(SIM.alloc[i])SIM.alloc[i][f]=f===0?t.value:t.value.trim();simSave();renderSim();}
-  if(t.id==="simpre"){const pr=SIM_PRESETS.find(x=>x[0]===t.value);if(pr){SIM.alloc=JSON.parse(JSON.stringify(pr[2]));simSave();renderSim();}}
-  if(t.dataset.b!==undefined){const B=S.data.budget=S.data.budget||{},x=parseNum(t.value);if(x===null||!(x>=0))delete B[t.dataset.b];else B[t.dataset.b]=x;save();renderGoals();}});
-document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.id==="tkq"){e.preventDefault();tkSearch();}});
-document.addEventListener("input",e=>{const t=e.target;if(t.dataset.r||t.id==="racq"||t.id==="rtol")updateReb();
-  if(t.id==="ew"){S.eword=t.value;const k=CFG.dict[t.value.trim().toLowerCase()],c=$("ec2"),s=$("es2"),dl=$("subs");if(k){c.value=k[0];s.value=k[1];if(dl)dl.innerHTML=subsOf(k[0]).map(x=>`<option value="${esc(x)}">`).join("");}c.disabled=s.disabled=!!k;}
-  if(t.id==="xq"){S.xq=t.value;clearTimeout(S.xt);S.xt=setTimeout(()=>{renderExp();const q=$("xq");if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length);}},350);}
-  if(t.id==="vq"){S.vq=t.value;clearTimeout(S.vt);S.vt=setTimeout(()=>{renderValid();const q=$("vq");q.focus();q.setSelectionRange(q.value.length,q.value.length);},350);}});
-document.addEventListener("click",e=>{
-  if(S.menu&&!e.target.closest("#bar")){S.menu=false;renderMenu();}
-  const b=e.target.closest("[data-a]");if(!b)return;const a=b.dataset.a;
-  if(a==="menu"){S.menu=!S.menu;S.sub=false;S.esub=false;S.isub=false;renderMenu();return;}
-  if(a==="esub"){S.esub=!S.esub;renderMenu();return;}
-  if(a==="isub"){S.isub=!S.isub;renderMenu();return;}
-  if(a==="sub"){S.sub=!S.sub;renderMenu();return;}
-  if(S.menu){S.menu=false;renderMenu();}
-  if(!["del","edel","idel"].includes(a))S.delAsk=false;
-  if(a==="years")showPicker();
-  else if(a==="out")out();
-  else if(a==="mm"){S.m=Math.min(12,Math.max(1,S.m+Number(b.dataset.d)));S.edit=null;draw();}
-  else if(a==="cur"){S.base=b.dataset.c;LS.set("base",S.base);draw();}
-  else if(a==="cat"){S.cat=b.dataset.c;S.edit=null;renderCat();screen("cat");}
-  else if(a==="home"){renderHome();screen("home");}
-  else if(a==="add"){S.edit="new";renderCat();}
-  else if(a==="edit"){S.edit=b.dataset.id;renderCat();}
-  else if(a==="cancel"){S.edit=null;renderCat();}
-  else if(a==="px")refresh(false);
-  else if(a==="upd"){S.edit=null;renderUpd();screen("upd");}
-  else if(a==="close"){const y=Number(b.dataset.y),m=Number(b.dataset.m),go=()=>{S.m=m;S.edit=null;renderUpd();screen("upd");};if(y!==S.y)openYear(y).then(go);else go();}
-  else if(a==="later"){LS.set("later:"+uid,new Date().toDateString());renderHome();}
-  else if(a==="saveall")saveAll();
-  else if(a==="set"){renderSet();screen("set");}
-  else if(a==="hist"){renderHist();screen("hist");}
-  else if(a==="exp"){S.eedit=null;S.eword=undefined;S.eall=false;S.xq="";S.xm=0;renderExp();screen("exp");}
-  else if(a==="trend"){renderTrend();screen("trend");}
-  else if(a==="inc"){S.iedit=null;renderInc();screen("inc");}
-  else if(a==="sav"){renderSav();screen("sav");}
-  else if(a==="goals"){renderGoals();screen("goals");}
-  else if(a==="hof"){renderHof();screen("hof");}
-  else if(a==="valid"){S.vq="";renderValid();screen("valid");}
-  else if(a==="esave")saveExp();
-  else if(a==="eedit"){S.eedit=b.dataset.id;S.eword=undefined;renderExp();scrollTo(0,0);}
-  else if(a==="ecancel"){S.eedit=null;S.eword=undefined;renderExp();}
-  else if(a==="edel"){if(!S.delAsk){S.delAsk=true;renderExp();}else{const e=EXP().find(x=>x.id===S.eedit);if(e&&e.r)(S.data.recSkip=S.data.recSkip||[]).push(e.r+":"+mOf(e.d));S.data.exp=EXP().filter(x=>x.id!==S.eedit);S.eedit=null;S.eword=undefined;S.delAsk=false;save();renderExp();}}
-  else if(a==="eall"){S.eall=true;renderExp();}
-  else if(a==="rdel"){CFG.rec=CFG.rec.filter(r=>r.id!==b.dataset.id);cfgSave();renderExp();}
-  else if(a==="cmp"){S.cmp=!S.cmp;if(!S.cmpM||!S.cmpM.length)S.cmpM=[S.m];renderTrend();}
-  else if(a==="cm"){const m=Number(b.dataset.m);S.cmpM=S.cmpM||[];if(S.cmpM.includes(m)){if(S.cmpM.length>1)S.cmpM=S.cmpM.filter(x=>x!==m);}else S.cmpM.push(m);S.cmpM.sort((x,y)=>x-y);renderTrend();}
-  else if(a==="cmall"){S.cmpM=S.cmpM&&S.cmpM.length===lastM()?[S.m]:[...Array(lastM()).keys()].map(i=>i+1);renderTrend();}
-  else if(a==="tc"){S.tcat=S.tcat===b.dataset.c?null:b.dataset.c;renderTrend();}
-  else if(a==="isave")saveInc();
-  else if(a==="iedit"){S.iedit=b.dataset.id;renderInc();scrollTo(0,0);}
-  else if(a==="icancel"){S.iedit=null;renderInc();}
-  else if(a==="idel"){if(!S.delAsk){S.delAsk=true;renderInc();}else{S.data.inc=INC().filter(x=>x.id!==S.iedit);S.iedit=null;S.delAsk=false;save();renderInc();}}
-  else if(a==="gadd"){const n=$("gn").value.trim();if(n){(S.data.goals=S.data.goals||[]).push({id:nid(),name:n,st:{}});save();renderGoals();}}
-  else if(a==="gtap"){const g=S.data.goals.find(x=>x.id===b.dataset.id),o=["","g","y","r"],cur=(g.st||{})[b.dataset.m]||"";(g.st=g.st||{})[b.dataset.m]=o[(o.indexOf(cur)+1)%4];save();renderGoals();}
-  else if(a==="ngm"){S.data.ngoal={...(S.data.ngoal||{v:""}),mode:b.dataset.m};save();renderGoals();}
-  else if(a==="gdel"){const g=S.data.goals.find(x=>x.id===b.dataset.id);sure(L("Eliminare l'obiettivo \"","Delete the goal \"")+g.name+"\"?",()=>{S.data.goals=S.data.goals.filter(x=>x.id!==g.id);save();renderGoals();});}
-  else if(a==="wdel"){delete CFG.dict[b.dataset.w];CFG.setupValid=true;cfgSave();renderValid();}
-  else if(a==="wdefdel")sure(L("Eliminare le parole di esempio? Le tue restano.","Delete the sample words? Yours stay."),()=>{Object.keys(CFG.dict).forEach(w=>{if(DEF_DICT[w])delete CFG.dict[w];});CFG.setupValid=true;cfgSave();renderValid();});
-  else if(a==="vsave")saveValid();
-  else if(a==="icadd"){const n=$("icn").value.trim();if(n&&!CFG.inc.includes(n)){CFG.inc.push(n);cfgSave();renderValid();}}
-  else if(a==="icdel"){CFG.inc.splice(Number(b.dataset.i),1);if(!CFG.inc.length)CFG.inc=["Stipendio"];cfgSave();renderValid();}
-  else if(a==="cadd"){const n=$("cnn").value.trim();if(n){addCat(n);renderValid();}}
-  else if(a==="cdel"){const id=b.dataset.c;sure(L("Eliminare la categoria \"","Delete the category \"")+ECN(id)+L("\"? Parole e spese passano in Altro.","\"? Words and expenses move to Altro."),()=>{delCat(id);renderValid();});}
-  else if(a==="graph"){renderGraph();screen("graph");}
-  else if(a==="xgcat"){S.gHide=S.gHide||[];const c=b.dataset.c;S.gHide=S.gHide.includes(c)?S.gHide.filter(x=>x!==c):[...S.gHide,c];renderGraph();}
-  else if(a==="xgbar"){S.gm=Number(b.dataset.m);renderGraph();}
-  else if(a==="igraph"){renderIGraph();screen("igraph");}
-  else if(a==="xigcat"){S.igHide=S.igHide||[];const c=b.dataset.c;S.igHide=S.igHide.includes(c)?S.igHide.filter(x=>x!==c):[...S.igHide,c];renderIGraph();}
-  else if(a==="xigbar"){S.igm=Number(b.dataset.m);renderIGraph();}
-  else if(a==="sim"){simLoad();renderSim();screen("sim");}
-  else if(a==="saladd"){SIM.alloc.push([L("Nuova classe","New class"),0,5,10]);simSave();renderSim();}
-  else if(a==="saldel"){if(SIM.alloc.length>1)SIM.alloc.splice(Number(b.dataset.i),1);simSave();renderSim();}
-  else if(a==="simmine"){simMine();}
-  else if(a==="tksearch")tkSearch();
-  else if(a==="tkpick")tkPick(b);
-  else if(a==="wipe")sure(L("Cancellare tutti i dati di prova? Non torneranno.","Delete all demo data? They won't come back."),wipeDemo);
-  else if(a==="ics")makeIcs();
-  else if(a==="help")openHelp(helpKey());
-  else if(a==="oauth"){if(D)return;localStorage.setItem(KEEP,$("keep").checked?"1":"0");say(L("Ti porto all'accesso…","Taking you to sign in…"));
-    db.auth.signInWithOAuth({provider:b.dataset.p,options:{redirectTo:location.origin+location.pathname}}).then(({error})=>{if(error)say(error.message,"err");});}
-  else if(a==="fb"){if(!FEEDBACK_EMAIL.includes("@"))return sure(L("Indirizzo per il feedback non ancora impostato nel codice (FEEDBACK_EMAIL).","Feedback address not set in the code yet (FEEDBACK_EMAIL)."),()=>{});
-    const here=({cat:S.cat||""})[S.scr]||S.scr,body=L("Feedback su Mozzi","Feedback on Mozzi")+" ("+APP_VERSION+")\n"+L("Pagina","Page")+": "+here+"\n"+L("Lingua","Language")+": "+LANG+"\n"+L("Dispositivo","Device")+": "+navigator.userAgent+"\n\n"+L("Cosa non va o cosa vorrei:","What's wrong or what I'd like:")+"\n";
-    location.href="mailto:"+FEEDBACK_EMAIL+"?subject="+encodeURIComponent("Feedback Mozzi "+APP_VERSION)+"&body="+encodeURIComponent(body);}
-  else if(a==="helppick")openHelp("pick");
-  else if(a==="guide"){renderGuide();screen("guide");}
-  else if(a==="setup"){renderSetup();screen("setup");}
-  else if(a==="acct"){renderAcct();screen("acct");}
-  else if(a==="legal")openLegal();
-  else if(a==="setupall"){LS.set("setupskip:"+uid,SETUP.map(x=>x.id));LS.set("setuphide:"+uid,1);renderHome();screen("home");}
-  else if(a==="pwd")ask(L("Nuova password (almeno 6 caratteri)","New password (at least 6 characters)"),"••••••",async v=>{if(v.length<6)return;const {error}=await db.auth.updateUser({password:v});const m=smsgEl();if(m)m.textContent=error?error.message:L("Password aggiornata.","Password updated.");});
-  else if(a==="setupskip"){LS.set("setupskip:"+uid,[...setupSkip(),b.dataset.id]);renderSetup();}
-  else if(a==="setuphide"){LS.set("setuphide:"+uid,1);renderHome();}
-  else if(a==="gopen"){S.gopen=S.gopen===b.dataset.k?null:b.dataset.k;renderGuide();}
-  else if(a==="welcome"){showWelcome(true);}
-  else if(a==="lang"){LS.set("lang",b.dataset.l);location.reload();}
-  else if(a==="export")exportAll();
-  else if(a==="key")ask("Chiave Twelve Data","incolla qui la chiave",k=>{LS.set("tdkey",k);smsgEl().textContent="Chiave salvata.";});
-  else if(a==="fin"){renderFin();screen("fin");}
-  else if(a==="reb"||a==="tax"){renderTax();screen("tax");}
-  else if(a==="taxok"||a==="taxno"){
-    const R=S.data.reb=S.data.reb||{mode:"pct",pct:{},amt:{}},X=R.tax=R.tax||{rate:"",gain:{}};
-    X.on=a==="taxok";
-    if(X.on){X.rate=$("trate").value.trim();X.cur=S.base;document.querySelectorAll("[data-g]").forEach(e=>{X.gain[e.dataset.g]=e.value.trim();});}
-    save();renderReb();screen("reb");}
-  else if(a==="rmode"){const R=S.data.reb;R.mode=b.dataset.m;save();renderReb();}
-  else if(a==="fxset")ask("Cambio EUR/USD di "+MESI[S.m-1].toLowerCase(),"es. 1,153",v=>{const x=Number(v.replace(",","."));if(x>0){(S.data.fx=S.data.fx||{})[S.m]=x;save();draw();}});
-  else if(a==="save")saveItem();
-  else if(a==="del"){if(!S.delAsk){S.delAsk=true;renderCat();}else{S.delAsk=false;S.data.items=S.data.items.filter(i=>i.id!==S.edit);S.edit=null;save();renderCat();}}
-});
-
-$("oauth").hidden=!(OAUTH.google||OAUTH.apple);document.querySelector('[data-p="google"]').hidden=!OAUTH.google;$("appleBtn").hidden=!OAUTH.apple;
-if(D){document.querySelectorAll('[data-a="oauth"]').forEach(b=>{b.disabled=true;b.style.opacity=.6;});$("oauth").insertAdjacentHTML("beforeend",`<p class="mini" style="text-align:center;margin:8px 0 0">${L("Disponibile quando l'app sarà collegata a Supabase.","Available once the app is connected to Supabase.")}</p>`);}
-if(db){db.auth.onAuthStateChange((_e,s)=>setTimeout(()=>route(s),0));}
-auth.get().then(route);
-
-function net(){const p=uid&&(LS.get(kdirty(),[]).length||LS.get(kcdirty(),0));
-  $("net").textContent=(D?"Modalità demo: dati solo su questo dispositivo · ":"")+(navigator.onLine?"Online":"Offline: uso i dati salvati")+(p?" · modifiche da sincronizzare":"");}
-addEventListener("online",()=>{net();push();});addEventListener("offline",net);net();
-
-tr8(document.querySelector("main"));
-if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js"));
-</script>
-</body>
-</html>
+const totCatIn=(m,cat,c)=>S.data.items
