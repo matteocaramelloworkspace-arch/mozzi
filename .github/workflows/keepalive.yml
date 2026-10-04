@@ -1,0 +1,14 @@
+# Mozzi: interroga il database due volte a settimana, così Supabase non mette in pausa il progetto gratuito
+name: Mantieni attivo Supabase
+on:
+  schedule:
+    - cron: "17 6 * * 1,4"   # lunedì e giovedì alle 6:17 UTC
+  workflow_dispatch:          # permette di avviarlo a mano da Actions
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Interroga il database
+        run: |
+          curl -fsS "https://ugzvuieshiqwdlclryhr.supabase.co/rest/v1/years?select=id&limit=1" \
+            -H "apikey: sb_publishable_egcYudWrd7H-UFyMqz3E6A_tJC4k7EN"
