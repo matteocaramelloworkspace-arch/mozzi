@@ -1,14 +1,33 @@
-# Mozzi: interroga il database due volte a settimana, così Supabase non mette in pausa il progetto gratuito
-name: Mantieni attivo Supabase
+# Mozzi: tiene attivo tutto da solo, anche se nessuno usa l'app.
+# 1) ogni giorno interroga il database, così Supabase non mette in pausa il progetto gratuito;
+# 2) il 1° di ogni mese fa una piccola modifica al repository, così GitHub non spegne queste azioni programmate.
+# Se il database non risponde, l'azione fallisce e GitHub ti avvisa per email.
+name: Mantieni attivo Mozzi
 on:
   schedule:
-    - cron: "17 6 * * 1,4"   # lunedì e giovedì alle 6:17 UTC
-  workflow_dispatch:          # permette di avviarlo a mano da Actions
+    - cron: "17 6 * * *"    # ogni giorno alle 6:17 UTC
+    - cron: "43 5 1 * *"    # il 1° di ogni mese alle 5:43 UTC
+  workflow_dispatch:         # permette di avviarlo a mano da Actions
+permissions:
+  contents: write
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Interroga il database
+      - name: Interroga il database Supabase
         run: |
           curl -fsS "https://ugzvuieshiqwdlclryhr.supabase.co/rest/v1/years?select=id&limit=1" \
             -H "apikey: sb_publishable_egcYudWrd7H-UFyMqz3E6A_tJC4k7EN"
+  battito:
+    if: github.event.schedule == '43 5 1 * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Piccola modifica mensile al repository
+        run: |
+          date -u +"%Y-%m-%d %H:%M UTC" > keepalive.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add keepalive.txt
+          git commit -m "Battito mensile: mantiene attive le azioni programmate"
+          git push
